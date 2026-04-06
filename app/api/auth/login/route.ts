@@ -78,6 +78,6 @@ export async function POST(req: NextRequest) {
     username: user.username,
     player_id: player?.id ?? null,
     league_id: player?.league_id ?? null,
-    league_name: (player?.leagues as { name: string } | null)?.name ?? null,
+    league_name: (player?.leagues as unknown as { name: string } | null)?.name ?? null,
   });
 }
