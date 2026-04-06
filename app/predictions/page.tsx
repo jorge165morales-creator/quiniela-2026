@@ -1,0 +1,363 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import type { Match, Prediction } from "@/types";
+import FlagImg from "@/components/FlagImg";
+
+type PredictionMap = Record<string, { home: string; away: string }>;
+type GroupedMatches = Record<string, Match[]>;
+
+export default function PredictionsPage() {
+  const router = useRouter();
+  const [playerId, setPlayerId] = useState<string | null>(null);
+  const [playerName, setPlayerName] = useState<string | null>(null);
+  const [leagueId, setLeagueId] = useState<string | null>(null);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [predictions, setPredictions] = useState<PredictionMap>({});
+  const [existingPredictions, setExistingPredictions] = useState<Prediction[]>([]);
+  const [locked, setLocked] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const pid = localStorage.getItem("player_id");
+    const pname = localStorage.getItem("player_name");
+    const lid = localStorage.getItem("league_id");
+    if (!pid || !lid) {
+      router.push("/join");
+      return;
+    }
+    setPlayerId(pid);
+    setPlayerName(pname);
+    setLeagueId(lid);
+  }, [router]);
+
+  useEffect(() => {
+    if (!playerId || !leagueId) return;
+
+    async function load() {
+      setLoading(true);
+
+      const { data: matchData } = await supabase
+        .from("matches")
+        .select("*")
+        .eq("round", "group")
+        .order("kickoff_at");
+
+      const { data: leagueData } = await supabase
+        .from("leagues")
+        .select("predictions_locked")
+        .eq("id", leagueId!)
+        .single();
+
+      const { data: predData } = await supabase
+        .from("predictions")
+        .select("*")
+        .eq("player_id", playerId!);
+
+      if (matchData) setMatches(matchData as Match[]);
+      if (leagueData) setLocked(leagueData.predictions_locked);
+      if (predData) {
+        setExistingPredictions(predData as Prediction[]);
+        const map: PredictionMap = {};
+        for (const p of predData as Prediction[]) {
+          map[p.match_id] = {
+            home: String(p.home_score),
+            away: String(p.away_score),
+          };
+        }
+        setPredictions(map);
+      }
+      setLoading(false);
+    }
+
+    load();
+  }, [playerId, leagueId]);
+
+  function handleScore(matchId: string, side: "home" | "away", value: string) {
+    if (locked) return;
+    if (value !== "" && !/^\d{0,2}$/.test(value)) return;
+    setPredictions((prev) => ({
+      ...prev,
+      [matchId]: { ...prev[matchId], [side]: value },
+    }));
+  }
+
+  async function handleSave() {
+    if (!playerId) return;
+    setSaving(true);
+    setError("");
+
+    const rows = matches
+      .filter(
+        (m) =>
+          predictions[m.id]?.home !== undefined &&
+          predictions[m.id]?.home !== "" &&
+          predictions[m.id]?.away !== undefined &&
+          predictions[m.id]?.away !== ""
+      )
+      .map((m) => ({
+        player_id: playerId,
+        match_id: m.id,
+        home_score: parseInt(predictions[m.id].home, 10),
+        away_score: parseInt(predictions[m.id].away, 10),
+      }));
+
+    if (rows.length === 0) {
+      setError("No hay predicciones para guardar.");
+      setSaving(false);
+      return;
+    }
+
+    const res = await fetch("/api/predictions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ player_id: playerId, predictions: rows }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error || "Error al guardar.");
+    } else {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    }
+    setSaving(false);
+  }
+
+  async function handleSubmit() {
+    if (!playerId) return;
+    if (completedCount < matches.length) return;
+    setError("");
+
+    const rows = matches.map((m) => ({
+      player_id: playerId,
+      match_id: m.id,
+      home_score: parseInt(predictions[m.id].home, 10),
+      away_score: parseInt(predictions[m.id].away, 10),
+    }));
+
+    const scorelineCounts: Record<string, number> = {};
+    let drawCount = 0;
+    for (const r of rows) {
+      const [lo, hi] = [Math.min(r.home_score, r.away_score), Math.max(r.home_score, r.away_score)];
+      const key = `${lo}-${hi}`;
+      scorelineCounts[key] = (scorelineCounts[key] || 0) + 1;
+      if (r.home_score === r.away_score) drawCount++;
+    }
+    const maxAllowed = 28;
+    const topEntry = Object.entries(scorelineCounts).sort((a, b) => b[1] - a[1])[0];
+    const totalDistinct = Object.keys(scorelineCounts).length;
+    const distinctWithAtLeastTwo = Object.values(scorelineCounts).filter((c) => c >= 2).length;
+
+    if (topEntry && topEntry[1] > maxAllowed) {
+      setError(`El marcador ${topEntry[0]} aparece ${topEntry[1]} veces. Ningún marcador puede usarse en más del 50% de los partidos (máx. ${maxAllowed}).`);
+      return;
+    }
+    if (totalDistinct < 7) {
+      setError(`Tu quiniela necesita al menos 7 marcadores distintos. Actualmente tienes ${totalDistinct}.`);
+      return;
+    }
+    if (distinctWithAtLeastTwo < 5) {
+      const qualifying = Object.entries(scorelineCounts)
+        .filter(([, c]) => c >= 2)
+        .map(([k, c]) => `${k} (×${c})`)
+        .join(", ");
+      setError(`Al menos 5 de tus marcadores deben aparecer 2 o más veces. Actualmente tienes ${distinctWithAtLeastTwo}: ${qualifying || "ninguno"}.`);
+      return;
+    }
+    if (drawCount < 5) {
+      setError(`Debes predecir al menos 5 empates. Actualmente tienes ${drawCount}.`);
+      return;
+    }
+
+    setSaving(true);
+
+    const res = await fetch("/api/predictions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ player_id: playerId, predictions: rows, submit: true }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error || "Error al enviar.");
+    } else {
+      setSaved(true);
+    }
+    setSaving(false);
+  }
+
+  const grouped: GroupedMatches = {};
+  for (const m of matches) {
+    const key = m.group || "?";
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(m);
+  }
+
+  const completedCount = matches.filter(
+    (m) =>
+      predictions[m.id]?.home !== undefined &&
+      predictions[m.id]?.home !== "" &&
+      predictions[m.id]?.away !== undefined &&
+      predictions[m.id]?.away !== ""
+  ).length;
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[50vh]">
+        <p className="text-gray-400">Cargando partidos...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-black text-gray-900">Mis predicciones</h1>
+          <p className="text-gray-500 text-sm mt-1">
+            Hola, <span className="text-gray-900 font-medium">{playerName}</span> —{" "}
+            {completedCount}/{matches.length} partidos completados
+          </p>
+        </div>
+      </div>
+
+      {locked && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 mb-6 text-red-700 font-medium">
+          Las predicciones están cerradas. El torneo ya comenzó.
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 mb-6 text-red-700">
+          {error}
+        </div>
+      )}
+
+      {/* Progress bar */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
+          <span>{completedCount} de {matches.length} completados</span>
+          <span>{Math.round((completedCount / matches.length) * 100)}%</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-1.5">
+          <div
+            className="bg-fifa-blue h-1.5 rounded-full transition-all duration-300"
+            style={{ width: `${(completedCount / matches.length) * 100}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Matches grouped by group */}
+      {Object.entries(grouped)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([group, groupMatches]) => (
+          <div key={group} className="mb-8">
+            <div className="flex items-center gap-3 mb-3">
+              <span className="w-7 h-7 bg-fifa-blue rounded-lg flex items-center justify-center text-xs font-black text-white">
+                {group}
+              </span>
+              <span className="text-sm font-bold text-gray-600 uppercase tracking-wider">Grupo {group}</span>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              {groupMatches.map((match) => {
+                const pred = predictions[match.id];
+                const hasHome = pred?.home !== undefined && pred?.home !== "";
+                const hasAway = pred?.away !== undefined && pred?.away !== "";
+                const complete = hasHome && hasAway;
+
+                return (
+                  <div
+                    key={match.id}
+                    className={`bg-white rounded-2xl px-4 py-3 border shadow-sm transition-all ${
+                      complete
+                        ? "border-[#001E62]/25"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {/* Home team */}
+                      <div className="flex-1 flex items-center justify-end gap-2 min-w-0">
+                        <span className="font-semibold text-sm text-gray-800 truncate text-right">{match.home_team}</span>
+                        <FlagImg team={match.home_team} h={18} />
+                      </div>
+
+                      {/* Score inputs */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <input
+                          type="number"
+                          min={0}
+                          max={99}
+                          value={pred?.home ?? ""}
+                          onChange={(e) => handleScore(match.id, "home", e.target.value)}
+                          disabled={locked}
+                          placeholder="—"
+                          className="w-11 h-11 bg-gray-50 border border-gray-300 rounded-xl text-center font-black text-lg focus:outline-none focus:border-fifa-blue focus:bg-white disabled:opacity-40 transition-colors text-gray-900"
+                        />
+                        <span className="text-gray-300 font-bold text-sm">:</span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={99}
+                          value={pred?.away ?? ""}
+                          onChange={(e) => handleScore(match.id, "away", e.target.value)}
+                          disabled={locked}
+                          placeholder="—"
+                          className="w-11 h-11 bg-gray-50 border border-gray-300 rounded-xl text-center font-black text-lg focus:outline-none focus:border-fifa-blue focus:bg-white disabled:opacity-40 transition-colors text-gray-900"
+                        />
+                      </div>
+
+                      {/* Away team */}
+                      <div className="flex-1 flex items-center gap-2 min-w-0">
+                        <FlagImg team={match.away_team} h={18} />
+                        <span className="font-semibold text-sm text-gray-800 truncate">{match.away_team}</span>
+                      </div>
+                    </div>
+
+                    {/* Match date */}
+                    <p className="text-center text-xs text-gray-400 mt-2">
+                      {new Date(match.kickoff_at).toLocaleDateString("es-MX", {
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+
+      {/* Bottom buttons */}
+      {!locked && (
+        <div className="sticky bottom-20 md:bottom-4 flex justify-center gap-3 mt-8">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-5 py-3.5 bg-white text-gray-700 font-bold rounded-2xl text-sm shadow-lg hover:bg-gray-50 transition-colors disabled:opacity-50 border border-gray-200"
+          >
+            {saving ? "Guardando..." : `Guardar (${completedCount}/${matches.length})`}
+          </button>
+
+          <button
+            onClick={handleSubmit}
+            disabled={saving || completedCount < matches.length}
+            className="px-8 py-3.5 bg-fifa-gold text-gray-900 font-black rounded-2xl text-sm shadow-lg hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {saved ? "✓ Enviado" : "Enviar quiniela"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

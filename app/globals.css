@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Fallback in case Tailwind JIT misses custom colors */
+.text-fifa-gold  { color: #f1c40f !important; }
+.bg-fifa-gold    { background-color: #f1c40f !important; }
+.border-fifa-gold { border-color: #f1c40f !important; }
+.text-fifa-blue  { color: #001E62 !important; }
+.bg-fifa-blue    { background-color: #001E62 !important; }
+.border-fifa-blue { border-color: #001E62 !important; }
+.text-fifa-red   { color: #C8102E !important; }
+.bg-fifa-red     { background-color: #C8102E !important; }
