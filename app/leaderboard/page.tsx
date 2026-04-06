@@ -24,6 +24,7 @@ type EntryWithDelta = LeaderboardEntry & { delta: number | null };
 export default function LeaderboardPage() {
   const [leagueId, setLeagueId] = useState<string | null>(null);
   const [leagueName, setLeagueName] = useState<string | null>(null);
+  const [leagueLocked, setLeagueLocked] = useState(false);
   const [myPlayerId, setMyPlayerId] = useState<string | null>(null);
   const [entries, setEntries] = useState<EntryWithDelta[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +42,11 @@ export default function LeaderboardPage() {
     setLeagueId(lid);
     setLeagueName(lname);
     setMyPlayerId(pid);
+
+    if (lid) {
+      supabase.from("leagues").select("predictions_locked").eq("id", lid).single()
+        .then(({ data }) => { if (data) setLeagueLocked(data.predictions_locked); });
+    }
   }, []);
 
   useEffect(() => {
@@ -138,6 +144,7 @@ export default function LeaderboardPage() {
       setExpandedPlayer(null);
       return;
     }
+    if (!leagueLocked && playerId !== myPlayerId) return;
     setExpandedPlayer(playerId);
     if (!playerPredictions[playerId]) {
       await loadPlayerPredictions(playerId);
@@ -288,7 +295,10 @@ export default function LeaderboardPage() {
                     <span className="text-xs text-gray-400 ml-1">pts</span>
                   </div>
 
-                  <span className="text-gray-300 text-xs shrink-0">{isExpanded ? "▲" : "▼"}</span>
+                  {!leagueLocked && !isMe
+                    ? <span className="text-gray-300 text-xs shrink-0">🔒</span>
+                    : <span className="text-gray-300 text-xs shrink-0">{isExpanded ? "▲" : "▼"}</span>
+                  }
                 </button>
 
                 {/* Predictions breakdown */}
