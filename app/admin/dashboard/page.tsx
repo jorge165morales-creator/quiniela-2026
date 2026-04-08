@@ -84,7 +84,7 @@ export default function AdminDashboard() {
       .from("players")
       .select("id, name, paid, league_id, leagues(name)")
       .order("name");
-    if (playerData) setPlayers(playerData as PlayerRow[]);
+    if (playerData) setPlayers(playerData as unknown as PlayerRow[]);
 
     if (matchData) {
       setMatches(

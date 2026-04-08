@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { createServiceClient } from "@/lib/supabase";
 
 export async function POST(req: NextRequest) {
   const { secret, player_id, paid } = await req.json();
@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
 
-  const { error } = await supabaseAdmin
+  const { error } = await createServiceClient()
     .from("players")
     .update({ paid })
     .eq("id", player_id);
