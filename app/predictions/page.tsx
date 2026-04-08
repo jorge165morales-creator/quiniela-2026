@@ -21,6 +21,7 @@ export default function PredictionsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const [paid, setPaid] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -59,8 +60,15 @@ export default function PredictionsPage() {
         .select("*")
         .eq("player_id", playerId!);
 
+      const { data: playerData } = await supabase
+        .from("players")
+        .select("paid")
+        .eq("id", playerId!)
+        .single();
+
       if (matchData) setMatches(matchData as Match[]);
       if (leagueData) setLocked(leagueData.predictions_locked);
+      if (playerData) setPaid(playerData.paid ?? false);
       if (predData) {
         setExistingPredictions(predData as Prediction[]);
         const map: PredictionMap = {};
@@ -261,6 +269,16 @@ export default function PredictionsPage() {
         </div>
       )}
 
+      {paid === false && !locked && (
+        <div className="bg-amber-50 border border-amber-300 rounded-xl px-5 py-4 mb-6">
+          <p className="font-bold text-amber-800 mb-1">Pago pendiente</p>
+          <p className="text-amber-700 text-sm">
+            Debes pagar <span className="font-bold">Q150 / $20 USD</span> para poder enviar tu quiniela.
+            Puedes guardar tu progreso, pero no podrás enviarlo hasta que el organizador confirme tu pago.
+          </p>
+        </div>
+      )}
+
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 mb-6 text-red-700">
           {error}
@@ -426,10 +444,11 @@ export default function PredictionsPage() {
 
           <button
             onClick={handleSubmit}
-            disabled={saving || completedCount < matches.length}
+            disabled={saving || completedCount < matches.length || paid === false}
+            title={paid === false ? "Debes pagar antes de enviar" : undefined}
             className="px-8 py-3.5 bg-fifa-gold text-gray-900 font-black rounded-2xl text-sm shadow-lg hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {saved ? "✓ Enviado" : "Enviar quiniela"}
+            {saved ? "✓ Enviado" : paid === false ? "Pago pendiente" : "Enviar quiniela"}
           </button>
         </div>
       )}

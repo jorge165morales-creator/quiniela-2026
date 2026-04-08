@@ -23,6 +23,7 @@ export type Player = {
   id: string;
   league_id: string;
   name: string;
+  paid: boolean;
   created_at: string;
 };
 

@@ -27,6 +27,14 @@ type UserRow = {
   locked_until: string | null;
 };
 
+type PlayerRow = {
+  id: string;
+  name: string;
+  paid: boolean;
+  league_id: string;
+  leagues: { name: string } | null;
+};
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [secret, setSecret] = useState<string | null>(null);
@@ -39,6 +47,8 @@ export default function AdminDashboard() {
   const [matchPredictions, setMatchPredictions] = useState<Record<string, PredictionRow[]>>({});
   const [loadingPredictions, setLoadingPredictions] = useState(false);
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [players, setPlayers] = useState<PlayerRow[]>([]);
+  const [togglingPaid, setTogglingPaid] = useState<string | null>(null);
   const [resetUserId, setResetUserId] = useState<string | null>(null);
   const [resetPassword, setResetPassword] = useState("");
   const [resetMsg, setResetMsg] = useState<{ type: "ok" | "error"; text: string } | null>(null);
@@ -69,6 +79,12 @@ export default function AdminDashboard() {
     const s = localStorage.getItem("admin_secret");
     const usersRes = await fetch(`/api/admin/user?secret=${encodeURIComponent(s ?? "")}`);
     if (usersRes.ok) setUsers(await usersRes.json());
+
+    const { data: playerData } = await supabase
+      .from("players")
+      .select("id, name, paid, league_id, leagues(name)")
+      .order("name");
+    if (playerData) setPlayers(playerData as PlayerRow[]);
 
     if (matchData) {
       setMatches(
@@ -200,6 +216,21 @@ export default function AdminDashboard() {
     setResetting(false);
   }
 
+  async function togglePaid(player: PlayerRow) {
+    setTogglingPaid(player.id);
+    const res = await fetch("/api/admin/payment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ secret, player_id: player.id, paid: !player.paid }),
+    });
+    if (res.ok) {
+      setPlayers((prev) =>
+        prev.map((p) => (p.id === player.id ? { ...p, paid: !player.paid } : p))
+      );
+    }
+    setTogglingPaid(null);
+  }
+
   async function toggleLock(league: League) {
     const res = await fetch("/api/admin/league", {
       method: "POST",
@@ -297,6 +328,43 @@ export default function AdminDashboard() {
               </div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Payments */}
+      <section className="mb-10">
+        <h2 className="text-lg font-bold text-fifa-gold mb-4">
+          Pagos{" "}
+          <span className="text-sm font-normal text-gray-400">
+            ({players.filter((p) => p.paid).length}/{players.length} pagados)
+          </span>
+        </h2>
+        <div className="flex flex-col gap-2">
+          {players.map((player) => (
+            <div key={player.id} className="bg-gray-900 rounded-xl px-5 py-3 flex items-center justify-between">
+              <div>
+                <p className="font-semibold">{player.name}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{player.leagues?.name ?? "—"}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className={`text-xs font-medium px-3 py-1 rounded-full ${
+                  player.paid ? "bg-green-950 text-green-300" : "bg-red-950 text-red-300"
+                }`}>
+                  {player.paid ? "Pagado" : "Pendiente"}
+                </span>
+                <button
+                  onClick={() => togglePaid(player)}
+                  disabled={togglingPaid === player.id}
+                  className="text-sm text-fifa-gold hover:underline disabled:opacity-40"
+                >
+                  {togglingPaid === player.id ? "..." : player.paid ? "Marcar pendiente" : "Marcar pagado"}
+                </button>
+              </div>
+            </div>
+          ))}
+          {players.length === 0 && (
+            <p className="text-gray-500 text-sm">No hay jugadores registrados.</p>
+          )}
         </div>
       </section>
 
