@@ -199,6 +199,33 @@ export default function PredictionsPage() {
     grouped[key].push(m);
   }
 
+  function calcGroupStandings(groupMatches: Match[]) {
+    const teams: Record<string, { pts: number; gf: number; ga: number; played: number }> = {};
+    for (const m of groupMatches) {
+      if (!teams[m.home_team]) teams[m.home_team] = { pts: 0, gf: 0, ga: 0, played: 0 };
+      if (!teams[m.away_team]) teams[m.away_team] = { pts: 0, gf: 0, ga: 0, played: 0 };
+    }
+    for (const m of groupMatches) {
+      const pred = predictions[m.id];
+      if (!pred || pred.home === "" || pred.away === "") continue;
+      const h = parseInt(pred.home, 10);
+      const a = parseInt(pred.away, 10);
+      if (isNaN(h) || isNaN(a)) continue;
+      teams[m.home_team].gf += h;
+      teams[m.home_team].ga += a;
+      teams[m.home_team].played += 1;
+      teams[m.away_team].gf += a;
+      teams[m.away_team].ga += h;
+      teams[m.away_team].played += 1;
+      if (h > a) { teams[m.home_team].pts += 3; }
+      else if (h === a) { teams[m.home_team].pts += 1; teams[m.away_team].pts += 1; }
+      else { teams[m.away_team].pts += 3; }
+    }
+    return Object.entries(teams)
+      .map(([name, s]) => ({ name, ...s, gd: s.gf - s.ga }))
+      .sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || a.name.localeCompare(b.name));
+  }
+
   const completedCount = matches.filter(
     (m) =>
       predictions[m.id]?.home !== undefined &&
@@ -335,6 +362,54 @@ export default function PredictionsPage() {
                 );
               })}
             </div>
+
+            {/* Projected group standings */}
+            {(() => {
+              const standings = calcGroupStandings(groupMatches);
+              const anyPlayed = standings.some((s) => s.played > 0);
+              if (!anyPlayed) return null;
+              return (
+                <div className="mt-3 bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+                  <div className="px-4 py-2 border-b border-gray-100 bg-gray-50">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Clasificación proyectada</span>
+                  </div>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-xs text-gray-400 border-b border-gray-100">
+                        <th className="text-left px-4 py-1.5 font-medium w-6">#</th>
+                        <th className="text-left px-2 py-1.5 font-medium">Equipo</th>
+                        <th className="text-center px-2 py-1.5 font-medium w-8">PJ</th>
+                        <th className="text-center px-2 py-1.5 font-medium w-8">GF</th>
+                        <th className="text-center px-2 py-1.5 font-medium w-8">GC</th>
+                        <th className="text-center px-2 py-1.5 font-medium w-8">DG</th>
+                        <th className="text-center px-2 py-1.5 font-medium w-8 text-fifa-blue">Pts</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {standings.map((s, i) => (
+                        <tr key={s.name} className={`border-t border-gray-50 ${i < 2 ? "bg-blue-50/40" : ""}`}>
+                          <td className="px-4 py-2 text-xs text-gray-400 font-medium">{i + 1}</td>
+                          <td className="px-2 py-2">
+                            <div className="flex items-center gap-1.5">
+                              <FlagImg team={s.name} h={13} />
+                              <span className="text-gray-800 font-medium text-xs truncate">{s.name}</span>
+                            </div>
+                          </td>
+                          <td className="text-center px-2 py-2 text-xs text-gray-500">{s.played}</td>
+                          <td className="text-center px-2 py-2 text-xs text-gray-500">{s.gf}</td>
+                          <td className="text-center px-2 py-2 text-xs text-gray-500">{s.ga}</td>
+                          <td className="text-center px-2 py-2 text-xs text-gray-500">{s.gd > 0 ? `+${s.gd}` : s.gd}</td>
+                          <td className="text-center px-2 py-2 text-xs font-black text-fifa-blue">{s.pts}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p className="text-xs text-gray-400 px-4 py-2 border-t border-gray-100">
+                    Fondo azul = clasifican a octavos (proyectado)
+                  </p>
+                </div>
+              );
+            })()}
           </div>
         ))}
 
