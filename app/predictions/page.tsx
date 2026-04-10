@@ -107,6 +107,7 @@ export default function PredictionsPage() {
     const file = e.target.files?.[0];
     if (!file || !playerId) return;
     setUploadingAvatar(true);
+    setError("");
     const form = new FormData();
     form.append("file", file);
     form.append("player_id", playerId);
@@ -115,6 +116,8 @@ export default function PredictionsPage() {
     if (res.ok) {
       setAvatarUrl(`${data.url}?t=${Date.now()}`);
       setHasAvatar(true);
+    } else {
+      setError(`Error al subir foto: ${data.error ?? "desconocido"}`);
     }
     setUploadingAvatar(false);
   }
