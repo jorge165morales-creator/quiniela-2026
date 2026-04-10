@@ -170,7 +170,7 @@ export default function LeaderboardPage() {
 
     if (!imgFailed) {
       return (
-        <span className={`w-14 h-14 rounded-full overflow-hidden shrink-0 border-2 ${isMe ? "border-fifa-gold" : "border-transparent"}`}>
+        <span className={`w-16 h-16 rounded-full overflow-hidden shrink-0 border-2 ${isMe ? "border-fifa-gold" : "border-transparent"}`}>
           <img
             src={imgUrl}
             alt={name}
@@ -182,7 +182,7 @@ export default function LeaderboardPage() {
     }
 
     return (
-      <span className={`w-14 h-14 rounded-full flex items-center justify-center text-sm font-black shrink-0 ${
+      <span className={`w-16 h-16 rounded-full flex items-center justify-center text-sm font-black shrink-0 ${
         isMe ? "bg-fifa-gold text-gray-900" : "bg-gray-200 text-gray-600"
       }`}>
         {initials}
