@@ -26,13 +26,13 @@ export async function POST(req: NextRequest) {
   const buffer = Buffer.from(bytes);
 
   const { error } = await service.storage
-    .from("avatars")
+    .from("avatar")
     .upload(playerId, buffer, { contentType: file.type, upsert: true });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${playerId}`;
+  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatar/${playerId}`;
   return NextResponse.json({ url });
 }

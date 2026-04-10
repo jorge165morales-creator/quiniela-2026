@@ -165,7 +165,7 @@ export default function LeaderboardPage() {
   function Avatar({ name, isMe, playerId }: { name: string; isMe: boolean; playerId: string }) {
     const initials = name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const imgUrl = `${supabaseUrl}/storage/v1/object/public/avatars/${playerId}`;
+    const imgUrl = `${supabaseUrl}/storage/v1/object/public/avatar/${playerId}`;
     const [imgFailed, setImgFailed] = useState(false);
 
     if (!imgFailed) {

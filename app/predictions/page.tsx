@@ -75,7 +75,7 @@ export default function PredictionsPage() {
       if (playerData) {
         setPaid(playerData.paid ?? false);
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        setAvatarUrl(`${supabaseUrl}/storage/v1/object/public/avatars/${playerId}?t=${Date.now()}`);
+        setAvatarUrl(`${supabaseUrl}/storage/v1/object/public/avatar/${playerId}?t=${Date.now()}`);
       }
       if (predData) {
         setExistingPredictions(predData as Prediction[]);
