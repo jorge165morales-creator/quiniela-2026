@@ -294,7 +294,7 @@ export default function PredictionsPage() {
           <button
             onClick={() => avatarInputRef.current?.click()}
             disabled={uploadingAvatar}
-            className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-gray-200 hover:border-fifa-blue transition-colors group shrink-0"
+            className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-gray-200 hover:border-fifa-blue transition-colors group shrink-0"
             title="Cambiar foto"
           >
             {avatarUrl && hasAvatar !== false ? (
