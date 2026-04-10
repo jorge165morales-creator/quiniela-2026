@@ -23,6 +23,7 @@ export default function PredictionsPage() {
   const [error, setError] = useState("");
   const [paid, setPaid] = useState<boolean | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [hasAvatar, setHasAvatar] = useState<boolean | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
@@ -113,6 +114,7 @@ export default function PredictionsPage() {
     const data = await res.json();
     if (res.ok) {
       setAvatarUrl(`${data.url}?t=${Date.now()}`);
+      setHasAvatar(true);
     }
     setUploadingAvatar(false);
   }
@@ -292,12 +294,13 @@ export default function PredictionsPage() {
             className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-gray-200 hover:border-fifa-blue transition-colors group shrink-0"
             title="Cambiar foto"
           >
-            {avatarUrl ? (
+            {avatarUrl && hasAvatar !== false ? (
               <img
                 src={avatarUrl}
                 alt="Tu foto"
                 className="w-full h-full object-cover"
-                onError={() => setAvatarUrl(null)}
+                onLoad={() => setHasAvatar(true)}
+                onError={() => { setAvatarUrl(null); setHasAvatar(false); }}
               />
             ) : (
               <span className="w-full h-full bg-gray-100 flex items-center justify-center text-2xl font-black text-gray-400">
@@ -324,6 +327,15 @@ export default function PredictionsPage() {
       {locked && (
         <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 mb-6 text-red-700 font-medium">
           Las predicciones están cerradas. El torneo ya comenzó.
+        </div>
+      )}
+
+      {hasAvatar === false && !locked && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl px-5 py-4 mb-6">
+          <p className="font-bold text-blue-800 mb-1">Falta tu foto</p>
+          <p className="text-blue-700 text-sm">
+            Debes subir una foto de perfil antes de enviar tu quiniela. Toca el círculo arriba a la derecha para añadirla.
+          </p>
         </div>
       )}
 
@@ -502,11 +514,11 @@ export default function PredictionsPage() {
 
           <button
             onClick={handleSubmit}
-            disabled={saving || completedCount < matches.length || paid === false}
-            title={paid === false ? "Debes pagar antes de enviar" : undefined}
+            disabled={saving || completedCount < matches.length || paid === false || hasAvatar === false}
+            title={hasAvatar === false ? "Debes añadir una foto primero" : paid === false ? "Debes pagar antes de enviar" : undefined}
             className="px-8 py-3.5 bg-fifa-gold text-gray-900 font-black rounded-2xl text-sm shadow-lg hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {saved ? "✓ Enviado" : paid === false ? "Pago pendiente" : "Enviar quiniela"}
+            {saved ? "✓ Enviado" : hasAvatar === false ? "Falta tu foto" : paid === false ? "Pago pendiente" : "Enviar quiniela"}
           </button>
         </div>
       )}
