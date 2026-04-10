@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { Match, Prediction } from "@/types";
@@ -22,6 +22,9 @@ export default function PredictionsPage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const [paid, setPaid] = useState<boolean | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -68,7 +71,11 @@ export default function PredictionsPage() {
 
       if (matchData) setMatches(matchData as Match[]);
       if (leagueData) setLocked(leagueData.predictions_locked);
-      if (playerData) setPaid(playerData.paid ?? false);
+      if (playerData) {
+        setPaid(playerData.paid ?? false);
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        setAvatarUrl(`${supabaseUrl}/storage/v1/object/public/avatars/${playerId}?t=${Date.now()}`);
+      }
       if (predData) {
         setExistingPredictions(predData as Prediction[]);
         const map: PredictionMap = {};
@@ -93,6 +100,21 @@ export default function PredictionsPage() {
       ...prev,
       [matchId]: { ...prev[matchId], [side]: value },
     }));
+  }
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !playerId) return;
+    setUploadingAvatar(true);
+    const form = new FormData();
+    form.append("file", file);
+    form.append("player_id", playerId);
+    const res = await fetch("/api/avatar", { method: "POST", body: form });
+    const data = await res.json();
+    if (res.ok) {
+      setAvatarUrl(`${data.url}?t=${Date.now()}`);
+    }
+    setUploadingAvatar(false);
   }
 
   async function handleSave() {
@@ -260,6 +282,42 @@ export default function PredictionsPage() {
             Hola, <span className="text-gray-900 font-medium">{playerName}</span> —{" "}
             {completedCount}/{matches.length} partidos completados
           </p>
+        </div>
+
+        {/* Avatar upload */}
+        <div className="flex flex-col items-center gap-1">
+          <button
+            onClick={() => avatarInputRef.current?.click()}
+            disabled={uploadingAvatar}
+            className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-gray-200 hover:border-fifa-blue transition-colors group shrink-0"
+            title="Cambiar foto"
+          >
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt="Tu foto"
+                className="w-full h-full object-cover"
+                onError={() => setAvatarUrl(null)}
+              />
+            ) : (
+              <span className="w-full h-full bg-gray-100 flex items-center justify-center text-2xl font-black text-gray-400">
+                {playerName?.[0]?.toUpperCase() ?? "?"}
+              </span>
+            )}
+            <span className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white text-xs font-bold">
+              {uploadingAvatar ? "..." : "📷"}
+            </span>
+          </button>
+          <span className="text-xs text-gray-400">
+            {avatarUrl ? "Cambiar foto" : "Añadir foto"}
+          </span>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleAvatarChange}
+          />
         </div>
       </div>
 

@@ -162,8 +162,25 @@ export default function LeaderboardPage() {
     );
   }
 
-  function Avatar({ name, isMe }: { name: string; isMe: boolean }) {
+  function Avatar({ name, isMe, playerId }: { name: string; isMe: boolean; playerId: string }) {
     const initials = name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const imgUrl = `${supabaseUrl}/storage/v1/object/public/avatars/${playerId}`;
+    const [imgFailed, setImgFailed] = useState(false);
+
+    if (!imgFailed) {
+      return (
+        <span className={`w-9 h-9 rounded-full overflow-hidden shrink-0 border-2 ${isMe ? "border-fifa-gold" : "border-transparent"}`}>
+          <img
+            src={imgUrl}
+            alt={name}
+            className="w-full h-full object-cover"
+            onError={() => setImgFailed(true)}
+          />
+        </span>
+      );
+    }
+
     return (
       <span className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-black shrink-0 ${
         isMe ? "bg-fifa-gold text-gray-900" : "bg-gray-200 text-gray-600"
@@ -271,7 +288,7 @@ export default function LeaderboardPage() {
                   </div>
 
                   {/* Avatar */}
-                  <Avatar name={entry.player_name} isMe={isMe} />
+                  <Avatar name={entry.player_name} isMe={isMe} playerId={entry.player_id} />
 
                   {/* Name + delta */}
                   <div className="flex-1 flex items-center gap-2 min-w-0">
