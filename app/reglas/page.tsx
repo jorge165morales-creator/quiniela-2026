@@ -8,7 +8,18 @@ export default function ReglasPage() {
       <section className="bg-white rounded-2xl p-6 mb-4 border border-gray-200 shadow-sm">
         <h2 className="text-lg font-bold text-fifa-blue mb-3">Costo de inscripción</h2>
         <p className="text-3xl font-black text-gray-900 mb-1">Q150 <span className="text-gray-400 text-lg font-normal">/ persona</span></p>
-        <p className="text-gray-500 text-sm">Equivalente aproximado: $20 USD</p>
+        <p className="text-gray-500 text-sm mb-4">Equivalente aproximado: $20 USD</p>
+        <p className="text-sm font-semibold text-gray-700 mb-2">Pagar a: Ana Ruth Morales Caceres</p>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border border-gray-200">
+            <span className="text-sm font-medium text-gray-500 shrink-0">BI Monetaria</span>
+            <span className="font-mono font-bold text-gray-900 tracking-wider">1940048836</span>
+          </div>
+          <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3 border border-gray-200">
+            <span className="text-sm font-medium text-gray-500 shrink-0">Venmo</span>
+            <span className="font-mono font-bold text-gray-900">@anaruthm</span>
+          </div>
+        </div>
       </section>
 
       {/* Predicciones */}
