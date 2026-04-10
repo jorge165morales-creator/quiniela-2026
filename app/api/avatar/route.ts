@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
   const buffer = Buffer.from(bytes);
 
   const { error } = await service.storage
-    .from("avatar")
+    .from("Avatar")
     .upload(playerId, buffer, { contentType: file.type, upsert: true });
 
   if (error) {
