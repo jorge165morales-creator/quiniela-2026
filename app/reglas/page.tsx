@@ -36,6 +36,10 @@ export default function ReglasPage() {
           <li className="flex gap-2"><span className="text-fifa-gold shrink-0 font-bold">•</span><span>Las predicciones deben enviarse antes de que inicie el torneo. Una vez cerradas, no se pueden modificar.</span></li>
           <li className="flex gap-2"><span className="text-fifa-gold shrink-0 font-bold">•</span>Puedes guardar tu progreso y regresar a completarlas antes del cierre.</li>
         </ul>
+        <div className="mt-4 flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+          <span className="text-red-500 font-bold shrink-0">⚠️</span>
+          <p className="text-red-700 text-sm font-semibold">No aceptaremos quinielas algorítmicas.</p>
+        </div>
 
       </section>
 
