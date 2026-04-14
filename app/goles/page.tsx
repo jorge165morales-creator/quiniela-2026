@@ -136,6 +136,7 @@ export default function GolesPage() {
   }
 
   const tournamentDone = finishedMatches === totalMatches && totalMatches > 0;
+  const tournamentStarted = finishedMatches > 0;
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -175,7 +176,13 @@ export default function GolesPage() {
       </div>
 
       {/* Rankings */}
-      {entries.length === 0 ? (
+      {!tournamentStarted ? (
+        <div className="bg-white border border-gray-200 rounded-2xl px-5 py-8 text-center shadow-sm">
+          <p className="text-2xl mb-2">🔒</p>
+          <p className="font-semibold text-gray-700 mb-1">Los pronósticos están ocultos</p>
+          <p className="text-sm text-gray-400">Se revelarán cuando inicie el torneo.</p>
+        </div>
+      ) : entries.length === 0 ? (
         <p className="text-gray-400 text-center mt-8">No hay predicciones aún.</p>
       ) : (
         <div className="flex flex-col gap-2">
@@ -234,9 +241,11 @@ export default function GolesPage() {
         </div>
       )}
 
-      <p className="text-xs text-gray-400 text-center mt-4">
-        Diferencia = goles predichos − goles reales. El más cercano a 0 gana.
-      </p>
+      {tournamentStarted && (
+        <p className="text-xs text-gray-400 text-center mt-4">
+          Diferencia = goles predichos − goles reales. El más cercano a 0 gana.
+        </p>
+      )}
     </div>
   );
 }

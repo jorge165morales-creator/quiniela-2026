@@ -77,36 +77,71 @@ export default function ReglasPage() {
 
       {/* Premios */}
       <section className="bg-white rounded-2xl p-6 mb-4 border border-gray-200 shadow-sm">
-        <h2 className="text-lg font-bold text-fifa-blue mb-4">Premios especiales</h2>
+        <h2 className="text-lg font-bold text-fifa-blue mb-1">Premios especiales</h2>
+        <p className="text-sm text-gray-500 mb-4">Todos los premios especiales se premiarán con <strong className="text-gray-700">Q150 / $20</strong>.</p>
         <div className="flex flex-col gap-4">
           <div className="flex items-start gap-3">
             <span className="text-2xl shrink-0">⭐</span>
             <div>
-              <p className="font-bold text-gray-900">Único 6 — Q150 / $20</p>
-              <p className="text-gray-500 text-sm mt-0.5">Si eres el único jugador en adivinar el marcador exacto de un partido, ganas Q150 / $20 por ese partido.</p>
+              <p className="font-bold text-gray-900">Único 6</p>
+              <p className="text-gray-500 text-sm mt-0.5">Si eres el único jugador en adivinar el marcador exacto de un partido, ganas el premio por ese partido.</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
             <span className="text-2xl shrink-0">🏅</span>
             <div>
-              <p className="font-bold text-gray-900">Mejor Ronda — Q150 / $20 por ronda</p>
-              <p className="text-gray-500 text-sm mt-0.5">El jugador con más puntos al finalizar cada jornada de la fase de grupos gana Q150 / $20. Hay 3 jornadas.</p>
+              <p className="font-bold text-gray-900">Mejor Ronda</p>
+              <p className="text-gray-500 text-sm mt-0.5">El jugador con más puntos al finalizar cada jornada de la fase de grupos gana. Hay 3 jornadas.</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
             <span className="text-2xl shrink-0">⚽</span>
             <div>
-              <p className="font-bold text-gray-900">Goles del Torneo — Q150 / $20</p>
+              <p className="font-bold text-gray-900">Goles del Torneo</p>
               <p className="text-gray-500 text-sm mt-0.5">Quien prediga el total de goles del torneo más cercano al real gana. La diferencia se calcula como goles predichos menos goles reales; el más cercano a 0 gana.</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
             <span className="text-2xl shrink-0">🏆</span>
             <div>
-              <p className="font-bold text-gray-900">Último 0 — Q150 / $20</p>
-              <p className="text-gray-500 text-sm mt-0.5">El último jugador que no reciba un 0 en ningún partido gana Q150 / $20.</p>
+              <p className="font-bold text-gray-900">Último 0</p>
+              <p className="text-gray-500 text-sm mt-0.5">El último jugador que no reciba un 0 en ningún partido gana.</p>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Premiación */}
+      <section className="bg-white rounded-2xl p-6 mb-4 border border-gray-200 shadow-sm">
+        <h2 className="text-lg font-bold text-fifa-blue mb-1">Premiación</h2>
+        <p className="text-sm text-gray-500 mb-4">Distribución del pozo acumulado al finalizar la fase de grupos.</p>
+        <div className="flex flex-col gap-0">
+          {[
+            { label: "Administración", desc: "Gastos operativos", pct: "2%", color: "text-gray-400" },
+            { label: "Premios especiales", desc: "Único 6 · Mejor Ronda (×3) · Goles · Último 0", pct: "Q150/$20 c/u", color: "text-gray-500" },
+          ].map((row, i) => (
+            <div key={i} className="flex items-center justify-between py-3 border-b border-gray-100">
+              <div>
+                <p className="font-semibold text-gray-900 text-sm">{row.label}</p>
+                <p className="text-gray-400 text-xs mt-0.5">{row.desc}</p>
+              </div>
+              <span className={`text-sm font-bold ml-4 shrink-0 ${row.color}`}>{row.pct}</span>
+            </div>
+          ))}
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-4 mb-2">Saldo restante</p>
+          {[
+            { label: "1er lugar", emoji: "🥇", pct: "60%", color: "text-fifa-gold" },
+            { label: "2do lugar", emoji: "🥈", pct: "30%", color: "text-gray-500" },
+            { label: "3er lugar", emoji: "🥉", pct: "10%", color: "text-orange-500" },
+          ].map((row, i, arr) => (
+            <div key={i} className={`flex items-center justify-between py-3.5 ${i < arr.length - 1 ? "border-b border-gray-100" : ""}`}>
+              <div className="flex items-center gap-2">
+                <span className="text-xl">{row.emoji}</span>
+                <p className="font-semibold text-gray-900 text-sm">{row.label}</p>
+              </div>
+              <span className={`text-2xl font-black ml-4 shrink-0 ${row.color}`}>{row.pct}</span>
+            </div>
+          ))}
         </div>
       </section>
     </div>
