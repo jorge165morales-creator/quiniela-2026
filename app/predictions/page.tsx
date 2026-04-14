@@ -21,6 +21,7 @@ export default function PredictionsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const [algoError, setAlgoError] = useState(false);
   const [paid, setPaid] = useState<boolean | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [hasAvatar, setHasAvatar] = useState<boolean | null>(null);
@@ -189,12 +190,14 @@ export default function PredictionsPage() {
     const totalDistinct = Object.keys(scorelineCounts).length;
     const distinctWithAtLeastTwo = Object.values(scorelineCounts).filter((c) => c >= 2).length;
 
+    const flagAlgo = (msg: string) => { setError(msg); setAlgoError(true); };
+
     if (topEntry && topEntry[1] > maxAllowed) {
-      setError(`El marcador ${topEntry[0]} aparece ${topEntry[1]} veces. Ningún marcador puede usarse en más del 50% de los partidos (máx. ${maxAllowed}).`);
+      flagAlgo(`El marcador ${topEntry[0]} aparece ${topEntry[1]} veces (máx. ${maxAllowed}).`);
       return;
     }
     if (totalDistinct < 7) {
-      setError(`Tu quiniela necesita al menos 7 marcadores distintos. Actualmente tienes ${totalDistinct}.`);
+      flagAlgo(`Tu quiniela tiene ${totalDistinct} marcadores distintos (mínimo 7).`);
       return;
     }
     if (distinctWithAtLeastTwo < 5) {
@@ -202,13 +205,14 @@ export default function PredictionsPage() {
         .filter(([, c]) => c >= 2)
         .map(([k, c]) => `${k} (×${c})`)
         .join(", ");
-      setError(`Al menos 5 de tus marcadores deben aparecer 2 o más veces. Actualmente tienes ${distinctWithAtLeastTwo}: ${qualifying || "ninguno"}.`);
+      flagAlgo(`Solo ${distinctWithAtLeastTwo} de tus marcadores aparecen 2 o más veces (mínimo 5): ${qualifying || "ninguno"}.`);
       return;
     }
     if (drawCount < 5) {
-      setError(`Debes predecir al menos 5 empates. Actualmente tienes ${drawCount}.`);
+      flagAlgo(`Tienes ${drawCount} empates (mínimo 5).`);
       return;
     }
+    setAlgoError(false);
 
     setSaving(true);
 
@@ -354,7 +358,15 @@ export default function PredictionsPage() {
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 mb-6 text-red-700">
-          {error}
+          <p className="font-semibold mb-1">{error}</p>
+          {algoError && (
+            <div className="mt-3 pt-3 border-t border-red-200 text-sm text-red-600 space-y-1">
+              <p className="font-bold text-red-700 mb-2">No se permiten quinielas algorítmicas. Tu quiniela debe cumplir:</p>
+              <p>• Al menos <strong>7 marcadores distintos</strong>, de los cuales al menos <strong>5 deben aparecer 2 o más veces</strong>.</p>
+              <p>• Ningún marcador puede usarse en más de <strong>28 partidos</strong> de 72.</p>
+              <p>• Al menos <strong>5 empates</strong> predichos.</p>
+            </div>
+          )}
         </div>
       )}
 

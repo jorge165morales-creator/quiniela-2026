@@ -37,14 +37,6 @@ export default function ReglasPage() {
           <li className="flex gap-2"><span className="text-fifa-gold shrink-0 font-bold">•</span>Puedes guardar tu progreso y regresar a completarlas antes del cierre.</li>
         </ul>
 
-        <div className="mt-4 pt-4 border-t border-gray-100">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Requisitos para enviar la quiniela</p>
-          <ul className="text-gray-600 space-y-2 text-sm">
-            <li className="flex gap-2"><span className="text-green-500 shrink-0">✓</span><span>Tu quiniela debe tener al menos <strong className="text-gray-900">7 marcadores distintos</strong>, de los cuales al menos <strong className="text-gray-900">5 deben aparecer 2 o más veces</strong>.</span></li>
-            <li className="flex gap-2"><span className="text-green-500 shrink-0">✓</span><span>Ningún marcador puede usarse en más de <strong className="text-gray-900">28 partidos</strong> de 72.</span></li>
-            <li className="flex gap-2"><span className="text-green-500 shrink-0">✓</span><span>Debes predecir al menos <strong className="text-gray-900">5 empates</strong>.</span></li>
-          </ul>
-        </div>
       </section>
 
       {/* Puntuación */}
