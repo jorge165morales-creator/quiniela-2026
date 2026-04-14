@@ -39,6 +39,7 @@ export default function NavBar() {
           <Link href="/leaderboard" className="hover:text-gray-900 transition-colors">Tabla</Link>
           <Link href="/rondas" className="hover:text-gray-900 transition-colors">Rondas</Link>
           <Link href="/ultimo-cero" className="hover:text-gray-900 transition-colors">Último 0</Link>
+          <Link href="/goles" className="hover:text-gray-900 transition-colors">Goles</Link>
           <Link href="/reglas" className="hover:text-gray-900 transition-colors">Reglas</Link>
 
           {username ? (

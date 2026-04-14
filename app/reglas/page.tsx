@@ -94,6 +94,13 @@ export default function ReglasPage() {
             </div>
           </div>
           <div className="flex items-start gap-3">
+            <span className="text-2xl shrink-0">⚽</span>
+            <div>
+              <p className="font-bold text-gray-900">Goles del Torneo — Q150 / $20</p>
+              <p className="text-gray-500 text-sm mt-0.5">Quien prediga el total de goles del torneo más cercano al real gana. La diferencia se calcula como goles predichos menos goles reales; el más cercano a 0 gana.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
             <span className="text-2xl shrink-0">🏆</span>
             <div>
               <p className="font-bold text-gray-900">Último 0 — Q150 / $20</p>
