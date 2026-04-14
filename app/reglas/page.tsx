@@ -20,6 +20,12 @@ export default function ReglasPage() {
             <span className="font-mono font-bold text-gray-900">@anaruthm</span>
           </div>
         </div>
+        <p className="text-sm text-gray-500 mt-4">
+          Enviar comprobante de pago por WhatsApp al{" "}
+          <a href="https://wa.me/18578679473" target="_blank" rel="noopener noreferrer" className="font-semibold text-green-600 hover:underline">
+            +1 (857) 867-9473
+          </a>
+        </p>
       </section>
 
       {/* Predicciones */}
