@@ -356,20 +356,6 @@ export default function PredictionsPage() {
         </div>
       )}
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 mb-6 text-red-700">
-          <p className="font-semibold mb-1">{error}</p>
-          {algoError && (
-            <div className="mt-3 pt-3 border-t border-red-200 text-sm text-red-600 space-y-1">
-              <p className="font-bold text-red-700 mb-2">No se permiten quinielas algorítmicas. Tu quiniela debe cumplir:</p>
-              <p>• Al menos <strong>7 marcadores distintos</strong>, de los cuales al menos <strong>5 deben aparecer 2 o más veces</strong>.</p>
-              <p>• Ningún marcador puede usarse en más de <strong>28 partidos</strong> de 72.</p>
-              <p>• Al menos <strong>5 empates</strong> predichos.</p>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Progress bar */}
       <div className="mb-8">
         <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
@@ -517,6 +503,19 @@ export default function PredictionsPage() {
         ))}
 
       {/* Bottom buttons */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 mt-8 text-red-700">
+          <p className="font-semibold mb-1">{error}</p>
+          {algoError && (
+            <div className="mt-3 pt-3 border-t border-red-200 text-sm text-red-600 space-y-1">
+              <p className="font-bold text-red-700 mb-2">No se permiten quinielas algorítmicas. Tu quiniela debe cumplir:</p>
+              <p>• Al menos <strong>7 marcadores distintos</strong>, de los cuales al menos <strong>5 deben aparecer 2 o más veces</strong>.</p>
+              <p>• Ningún marcador puede usarse en más de <strong>28 partidos</strong> de 72.</p>
+              <p>• Al menos <strong>5 empates</strong> predichos.</p>
+            </div>
+          )}
+        </div>
+      )}
       {!locked && (
         <div className="sticky bottom-20 md:bottom-4 flex justify-center gap-3 mt-8">
           <button
