@@ -87,6 +87,13 @@ export default function ReglasPage() {
             </div>
           </div>
           <div className="flex items-start gap-3">
+            <span className="text-2xl shrink-0">🏅</span>
+            <div>
+              <p className="font-bold text-gray-900">Mejor Ronda — Q150 / $20 por ronda</p>
+              <p className="text-gray-500 text-sm mt-0.5">El jugador con más puntos al finalizar cada jornada de la fase de grupos gana Q150 / $20. Hay 3 jornadas.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
             <span className="text-2xl shrink-0">🏆</span>
             <div>
               <p className="font-bold text-gray-900">Último 0 — Q150 / $20</p>

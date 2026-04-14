@@ -37,6 +37,7 @@ export default function NavBar() {
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-500">
           <Link href="/" className="hover:text-gray-900 transition-colors">Inicio</Link>
           <Link href="/leaderboard" className="hover:text-gray-900 transition-colors">Tabla</Link>
+          <Link href="/rondas" className="hover:text-gray-900 transition-colors">Rondas</Link>
           <Link href="/ultimo-cero" className="hover:text-gray-900 transition-colors">Último 0</Link>
           <Link href="/reglas" className="hover:text-gray-900 transition-colors">Reglas</Link>
 
