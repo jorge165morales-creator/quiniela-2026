@@ -77,8 +77,23 @@ export default function ReglasPage() {
 
       {/* Premios */}
       <section className="bg-white rounded-2xl p-6 mb-4 border border-gray-200 shadow-sm">
-        <h2 className="text-lg font-bold text-fifa-blue mb-3">Premios</h2>
-        <p className="text-gray-400 text-sm italic">Premios especiales próximamente...</p>
+        <h2 className="text-lg font-bold text-fifa-blue mb-4">Premios especiales</h2>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl shrink-0">⭐</span>
+            <div>
+              <p className="font-bold text-gray-900">Único 6 — Q150 / $20</p>
+              <p className="text-gray-500 text-sm mt-0.5">Si eres el único jugador en adivinar el marcador exacto de un partido, ganas Q150 / $20 por ese partido.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <span className="text-2xl shrink-0">🏆</span>
+            <div>
+              <p className="font-bold text-gray-900">Último 0 — Q150 / $20</p>
+              <p className="text-gray-500 text-sm mt-0.5">El último jugador que no reciba un 0 en ningún partido gana Q150 / $20.</p>
+            </div>
+          </div>
+        </div>
       </section>
     </div>
   );

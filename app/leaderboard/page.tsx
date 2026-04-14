@@ -21,6 +21,17 @@ type PlayerPrediction = {
 
 type EntryWithDelta = LeaderboardEntry & { delta: number | null };
 
+type UnicoSeis = {
+  player_id: string;
+  player_name: string;
+  home_team: string;
+  away_team: string;
+  group: string;
+  matchday: number;
+  home_score: number;
+  away_score: number;
+};
+
 export default function LeaderboardPage() {
   const [leagueId, setLeagueId] = useState<string | null>(null);
   const [leagueName, setLeagueName] = useState<string | null>(null);
@@ -32,6 +43,7 @@ export default function LeaderboardPage() {
   const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
   const [playerPredictions, setPlayerPredictions] = useState<Record<string, PlayerPrediction[]>>({});
   const [loadingPlayer, setLoadingPlayer] = useState(false);
+  const [unicoSeis, setUnicoSeis] = useState<UnicoSeis[]>([]);
 
   const prevRanks = useRef<Record<string, number>>({});
 
@@ -79,6 +91,45 @@ export default function LeaderboardPage() {
         prevRanks.current = newRanks;
         setEntries(withDelta);
         setLastUpdated(new Date());
+
+        // Único 6: matches where exactly 1 player in this league scored 6 pts
+        const playerIds = newEntries.map((e) => e.player_id);
+        if (playerIds.length > 0) {
+          const { data: sixPreds } = await supabase
+            .from("predictions")
+            .select("player_id, match_id, matches(home_team, away_team, group, matchday, home_score, away_score, status)")
+            .in("player_id", playerIds)
+            .eq("points", 6);
+
+          if (sixPreds) {
+            // Group by match_id
+            const byMatch: Record<string, any[]> = {};
+            for (const p of sixPreds as any[]) {
+              if (p.matches?.status !== "finished") continue;
+              if (!byMatch[p.match_id]) byMatch[p.match_id] = [];
+              byMatch[p.match_id].push(p);
+            }
+            // Keep only matches with exactly 1 scorer
+            const winners: UnicoSeis[] = [];
+            for (const [, preds] of Object.entries(byMatch)) {
+              if (preds.length === 1) {
+                const p = preds[0];
+                const entry = newEntries.find((e) => e.player_id === p.player_id);
+                winners.push({
+                  player_id: p.player_id,
+                  player_name: entry?.player_name ?? "?",
+                  home_team: p.matches.home_team,
+                  away_team: p.matches.away_team,
+                  group: p.matches.group ?? "?",
+                  matchday: p.matches.matchday,
+                  home_score: p.matches.home_score,
+                  away_score: p.matches.away_score,
+                });
+              }
+            }
+            setUnicoSeis(winners);
+          }
+        }
       }
       setLoading(false);
     }
@@ -383,6 +434,43 @@ export default function LeaderboardPage() {
       <div className="mt-6 flex gap-4 text-xs text-gray-400 flex-wrap">
         <span><strong className="text-gray-500">Exactos</strong> = 6 pts</span>
         <span><strong className="text-gray-500">Acertados</strong> = 3–4 pts</span>
+      </div>
+
+      {/* Único 6 */}
+      <div className="mt-8">
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-xl">⭐</span>
+          <div>
+            <h2 className="font-black text-gray-900">Único 6</h2>
+            <p className="text-xs text-gray-400">Único jugador en adivinar el marcador exacto — Premio: Q150 / $20 por partido</p>
+          </div>
+        </div>
+
+        {unicoSeis.length === 0 ? (
+          <div className="bg-white border border-gray-200 rounded-2xl px-5 py-4 text-gray-400 text-sm">
+            Aún no hay ganadores de Único 6.
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {unicoSeis.map((w, i) => {
+              const isMe = w.player_id === myPlayerId;
+              return (
+                <div key={i} className={`bg-white rounded-2xl px-4 py-3 border shadow-sm flex items-center gap-3 ${isMe ? "border-fifa-gold/60" : "border-gray-200"}`}>
+                  <Avatar name={w.player_name} isMe={isMe} playerId={w.player_id} />
+                  <div className="flex-1 min-w-0">
+                    <p className={`font-bold text-sm ${isMe ? "text-fifa-blue" : "text-gray-900"}`}>
+                      {w.player_name}{isMe && <span className="text-xs text-gray-400 font-normal ml-1">(tú)</span>}
+                    </p>
+                    <p className="text-xs text-gray-400 truncate">
+                      {w.home_team} {w.home_score}–{w.away_score} {w.away_team} · Grupo {w.group}, J{w.matchday}
+                    </p>
+                  </div>
+                  <span className="text-yellow-500 font-black text-sm shrink-0">6 pts ⭐</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
