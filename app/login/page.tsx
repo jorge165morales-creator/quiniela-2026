@@ -36,6 +36,7 @@ export default function LoginPage() {
     if (data.player_id) localStorage.setItem("player_id", data.player_id);
     if (data.league_id) localStorage.setItem("league_id", data.league_id);
     if (data.league_name) localStorage.setItem("league_name", data.league_name);
+    window.dispatchEvent(new Event("quinielaauth"));
 
     router.push(data.player_id ? "/predictions" : "/join");
   }

@@ -35,6 +35,7 @@ export default function SignupPage() {
     localStorage.setItem("user_id", data.user_id);
     localStorage.setItem("player_name", data.name);
     localStorage.setItem("username", data.username);
+    window.dispatchEvent(new Event("quinielaauth"));
 
     router.push("/join");
   }

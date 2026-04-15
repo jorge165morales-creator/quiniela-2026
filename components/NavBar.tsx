@@ -11,6 +11,9 @@ export default function NavBar() {
 
   useEffect(() => {
     setUsername(localStorage.getItem("username"));
+    function handleAuth() { setUsername(localStorage.getItem("username")); }
+    window.addEventListener("quinielaauth", handleAuth);
+    return () => window.removeEventListener("quinielaauth", handleAuth);
   }, [pathname]);
 
   function handleLogout() {
