@@ -1,4 +1,5 @@
 import Link from "next/link";
+import HeroCTA from "@/components/HeroCTA";
 
 export default function Home() {
   return (
@@ -39,20 +40,7 @@ export default function Home() {
           </p>
 
           {/* CTAs */}
-          <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs sm:max-w-none sm:w-auto">
-            <Link
-              href="/signup"
-              className="px-8 py-4 bg-fifa-gold text-gray-900 font-black rounded-2xl text-base hover:opacity-90 transition-opacity shadow-lg"
-            >
-              Registrarse
-            </Link>
-            <Link
-              href="/login"
-              className="px-8 py-4 bg-white/10 text-white font-bold rounded-2xl text-base hover:bg-white/20 transition-colors border border-white/20"
-            >
-              Iniciar sesión
-            </Link>
-          </div>
+          <HeroCTA />
         </div>
       </div>
 
