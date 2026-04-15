@@ -53,6 +53,8 @@ export default function AdminDashboard() {
   const [resetPassword, setResetPassword] = useState("");
   const [resetMsg, setResetMsg] = useState<{ type: "ok" | "error"; text: string } | null>(null);
   const [resetting, setResetting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState<{ type: "ok" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     const s = localStorage.getItem("admin_secret");
@@ -253,6 +255,52 @@ export default function AdminDashboard() {
     }
   }
 
+  async function syncScores() {
+    setSyncing(true);
+    setSyncMsg(null);
+
+    const res = await fetch(
+      `/api/admin/live-score?secret=${encodeURIComponent(secret ?? "")}`
+    );
+    const body = await res.json();
+
+    if (!res.ok) {
+      setSyncMsg({ type: "error", text: body.error ?? "Error al sincronizar." });
+      setSyncing(false);
+      return;
+    }
+
+    const { scores } = body as {
+      scores: { homeTeam: string; awayTeam: string; home_score: number; away_score: number }[];
+    };
+
+    let matched = 0;
+    setMatches((prev) =>
+      prev.map((m) => {
+        const found = scores.find(
+          (s) =>
+            s.homeTeam.toLowerCase() === m.home_team.toLowerCase() &&
+            s.awayTeam.toLowerCase() === m.away_team.toLowerCase()
+        );
+        if (!found) return m;
+        matched++;
+        return {
+          ...m,
+          editHome: String(found.home_score),
+          editAway: String(found.away_score),
+        };
+      })
+    );
+
+    setSyncMsg({
+      type: "ok",
+      text: matched > 0
+        ? `${matched} partido${matched !== 1 ? "s" : ""} sincronizado${matched !== 1 ? "s" : ""}. Revisa y guarda.`
+        : "No se encontraron partidos terminados todavía.",
+    });
+    setSyncing(false);
+  }
+
   const filtered = matches.filter((m) =>
     filter === "all" ? true : m.status === filter
   );
@@ -432,23 +480,36 @@ export default function AdminDashboard() {
 
       {/* Matches */}
       <section>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-bold text-fifa-gold">Partidos</h2>
-          <div className="flex gap-2 text-sm">
-            {(["all", "upcoming", "live", "finished"] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-3 py-1 rounded-lg font-medium transition-colors ${
-                  filter === f
-                    ? "bg-fifa-gold text-gray-950"
-                    : "bg-gray-800 text-gray-400 hover:text-white"
-                }`}
-              >
-                {f === "all" ? "Todos" : f === "upcoming" ? "Próximos" : f === "live" ? "En vivo" : "Terminados"}
-              </button>
-            ))}
+          <button
+            onClick={syncScores}
+            disabled={syncing}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-green-400 font-semibold rounded-lg text-sm hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed border border-gray-700"
+          >
+            <span className={syncing ? "animate-spin inline-block" : ""}>🔄</span>
+            {syncing ? "Sincronizando..." : "Sync scores"}
+          </button>
+        </div>
+        {syncMsg && (
+          <div className={`mb-4 px-4 py-3 rounded-xl text-sm ${syncMsg.type === "ok" ? "bg-green-950 border border-green-700 text-green-300" : "bg-red-950 border border-red-700 text-red-300"}`}>
+            {syncMsg.text}
           </div>
+        )}
+        <div className="flex gap-2 text-sm mb-4">
+          {(["all", "upcoming", "live", "finished"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-3 py-1 rounded-lg font-medium transition-colors ${
+                filter === f
+                  ? "bg-fifa-gold text-gray-950"
+                  : "bg-gray-800 text-gray-400 hover:text-white"
+              }`}
+            >
+              {f === "all" ? "Todos" : f === "upcoming" ? "Próximos" : f === "live" ? "En vivo" : "Terminados"}
+            </button>
+          ))}
         </div>
 
         <div className="flex flex-col gap-3">
