@@ -117,7 +117,7 @@ export default function ReglasPage() {
         <p className="text-sm text-gray-500 mb-4">Distribución del pozo acumulado al finalizar la fase de grupos.</p>
         <div className="flex flex-col gap-0">
           {[
-            { label: "Administración", desc: "Gastos operativos", pct: "2%", color: "text-gray-400" },
+            { label: "Administración", desc: "Gastos operativos", pct: "4%", color: "text-gray-400" },
             { label: "Premios especiales", desc: "Único 6 · Mejor Ronda (×3) · Goles · Último 0", pct: "Q150/$20 c/u", color: "text-gray-500" },
           ].map((row, i) => (
             <div key={i} className="flex items-center justify-between py-3 border-b border-gray-100">
