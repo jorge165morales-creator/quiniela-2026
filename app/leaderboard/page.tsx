@@ -73,7 +73,7 @@ export default function LeaderboardPage() {
         .order("exact_scores", { ascending: false });
 
       if (data) {
-        const newEntries = data as LeaderboardEntry[];
+        const newEntries = (data as LeaderboardEntry[]).filter((e) => e.predictions_count >= 72);
         const newRanks: Record<string, number> = {};
         newEntries.forEach((e, i) => { newRanks[e.player_id] = i + 1; });
 
