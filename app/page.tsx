@@ -80,8 +80,6 @@ export default function Home() {
         <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 text-center">Cómo funciona</p>
         <div className="flex flex-col gap-3">
           {[
-            { step: "1", text: "Crea tu cuenta o inicia sesión", icon: "👤" },
-            { step: "2", text: "Únete a tu liga con el código de invitación", icon: "🔗" },
             { step: "3", text: "Predice los 72 partidos antes del torneo", icon: "✏️" },
             { step: "4", text: "Sigue la tabla en tiempo real", icon: "📊" },
           ].map(({ step, text, icon }) => (
