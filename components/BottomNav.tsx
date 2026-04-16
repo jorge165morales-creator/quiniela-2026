@@ -5,13 +5,12 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const tabs = [
-  { href: "/",            label: "Inicio",     icon: "🏠" },
-  { href: "/leaderboard", label: "Tabla",      icon: "📊" },
-  { href: "/predictions", label: "Quiniela",   icon: "✏️" },
-  { href: "/rondas",      label: "Rondas",     icon: "🏅" },
-  { href: "/goles",       label: "Goles",      icon: "⚽" },
-  { href: "/ultimo-cero", label: "Último 0",   icon: "🏆" },
-  { href: "/reglas",      label: "Reglas",     icon: "📋" },
+  { href: "/leaderboard", label: "Tabla",    icon: "📊" },
+  { href: "/predictions", label: "Quiniela", icon: "✏️" },
+  { href: "/rondas",      label: "Rondas",   icon: "🏅" },
+  { href: "/goles",       label: "Goles",    icon: "⚽" },
+  { href: "/ultimo-cero", label: "Último 0", icon: "🏆" },
+  { href: "/reglas",      label: "Reglas",   icon: "📋" },
 ];
 
 export default function BottomNav() {
@@ -27,49 +26,41 @@ export default function BottomNav() {
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur border-t border-gray-200 shadow-lg">
-      <div className="relative">
-        <div
-          className="flex items-stretch h-16 overflow-x-auto scrollbar-none"
-          style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
+      <div className="flex items-stretch h-16">
+        {tabs.map((tab) => {
+          const active = pathname === tab.href || (tab.href !== "/" && pathname.startsWith(tab.href));
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] transition-colors ${
+                active ? "text-fifa-blue" : "text-gray-400"
+              }`}
+            >
+              <span className="text-base leading-none">{tab.icon}</span>
+              <span className={`font-medium whitespace-nowrap ${active ? "font-bold" : ""}`}>
+                {tab.label}
+              </span>
+            </Link>
+          );
+        })}
+
+        {/* Account tab */}
+        <Link
+          href={username ? "/predictions" : "/login"}
+          className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] transition-colors ${
+            pathname === "/login" || pathname === "/signup" ? "text-fifa-blue" : "text-gray-400"
+          }`}
         >
-          {tabs.map((tab) => {
-            const active = pathname === tab.href || (tab.href !== "/" && pathname.startsWith(tab.href));
-            return (
-              <Link
-                key={tab.href}
-                href={tab.href}
-                className={`flex-shrink-0 flex flex-col items-center justify-center gap-0.5 px-3 text-xs transition-colors ${
-                  active ? "text-fifa-blue" : "text-gray-400"
-                }`}
-              >
-                <span className="text-lg leading-none">{tab.icon}</span>
-                <span className={`font-medium whitespace-nowrap ${active ? "font-bold" : ""}`}>
-                  {tab.label}
-                </span>
-              </Link>
-            );
-          })}
-
-          {/* Account tab */}
-          <Link
-            href={username ? "/predictions" : "/login"}
-            className={`flex-shrink-0 flex flex-col items-center justify-center gap-0.5 px-3 text-xs transition-colors ${
-              pathname === "/login" || pathname === "/signup" ? "text-fifa-blue" : "text-gray-400"
-            }`}
-          >
-            <span className="text-lg leading-none">
-              {username ? (
-                <span className="w-6 h-6 rounded-full bg-fifa-blue flex items-center justify-center text-white text-xs font-bold inline-flex">
-                  {username[0].toUpperCase()}
-                </span>
-              ) : "👤"}
-            </span>
-            <span className="font-medium whitespace-nowrap">{username ? username : "Cuenta"}</span>
-          </Link>
-        </div>
-
-        {/* Right-fade gradient — hints that more tabs exist off-screen */}
-        <div className="pointer-events-none absolute right-0 top-0 h-16 w-8 bg-gradient-to-l from-white to-transparent" />
+          <span className="text-base leading-none">
+            {username ? (
+              <span className="w-5 h-5 rounded-full bg-fifa-blue flex items-center justify-center text-white text-[9px] font-bold inline-flex">
+                {username[0].toUpperCase()}
+              </span>
+            ) : "👤"}
+          </span>
+          <span className="font-medium whitespace-nowrap">{username ? username : "Cuenta"}</span>
+        </Link>
       </div>
     </nav>
   );
