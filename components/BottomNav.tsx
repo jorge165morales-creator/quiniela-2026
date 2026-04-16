@@ -27,44 +27,49 @@ export default function BottomNav() {
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur border-t border-gray-200 shadow-lg">
-      <div
-        className="flex items-stretch h-16 overflow-x-auto scrollbar-none"
-        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-      >
-        {tabs.map((tab) => {
-          const active = pathname === tab.href || (tab.href !== "/" && pathname.startsWith(tab.href));
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              className={`flex-shrink-0 flex flex-col items-center justify-center gap-0.5 px-4 text-xs transition-colors ${
-                active ? "text-fifa-blue" : "text-gray-400"
-              }`}
-            >
-              <span className="text-lg leading-none">{tab.icon}</span>
-              <span className={`font-medium whitespace-nowrap ${active ? "font-bold" : ""}`}>
-                {tab.label}
-              </span>
-            </Link>
-          );
-        })}
-
-        {/* Account tab */}
-        <Link
-          href={username ? "/predictions" : "/login"}
-          className={`flex-shrink-0 flex flex-col items-center justify-center gap-0.5 px-4 text-xs transition-colors ${
-            pathname === "/login" || pathname === "/signup" ? "text-fifa-blue" : "text-gray-400"
-          }`}
+      <div className="relative">
+        <div
+          className="flex items-stretch h-16 overflow-x-auto scrollbar-none"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
         >
-          <span className="text-lg leading-none">
-            {username ? (
-              <span className="w-6 h-6 rounded-full bg-fifa-blue flex items-center justify-center text-white text-xs font-bold inline-flex">
-                {username[0].toUpperCase()}
-              </span>
-            ) : "👤"}
-          </span>
-          <span className="font-medium whitespace-nowrap">{username ? username : "Cuenta"}</span>
-        </Link>
+          {tabs.map((tab) => {
+            const active = pathname === tab.href || (tab.href !== "/" && pathname.startsWith(tab.href));
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                className={`flex-shrink-0 flex flex-col items-center justify-center gap-0.5 px-3 text-xs transition-colors ${
+                  active ? "text-fifa-blue" : "text-gray-400"
+                }`}
+              >
+                <span className="text-lg leading-none">{tab.icon}</span>
+                <span className={`font-medium whitespace-nowrap ${active ? "font-bold" : ""}`}>
+                  {tab.label}
+                </span>
+              </Link>
+            );
+          })}
+
+          {/* Account tab */}
+          <Link
+            href={username ? "/predictions" : "/login"}
+            className={`flex-shrink-0 flex flex-col items-center justify-center gap-0.5 px-3 text-xs transition-colors ${
+              pathname === "/login" || pathname === "/signup" ? "text-fifa-blue" : "text-gray-400"
+            }`}
+          >
+            <span className="text-lg leading-none">
+              {username ? (
+                <span className="w-6 h-6 rounded-full bg-fifa-blue flex items-center justify-center text-white text-xs font-bold inline-flex">
+                  {username[0].toUpperCase()}
+                </span>
+              ) : "👤"}
+            </span>
+            <span className="font-medium whitespace-nowrap">{username ? username : "Cuenta"}</span>
+          </Link>
+        </div>
+
+        {/* Right-fade gradient — hints that more tabs exist off-screen */}
+        <div className="pointer-events-none absolute right-0 top-0 h-16 w-8 bg-gradient-to-l from-white to-transparent" />
       </div>
     </nav>
   );
