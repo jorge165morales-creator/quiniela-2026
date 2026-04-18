@@ -19,7 +19,7 @@ type PlayerPrediction = {
   status: string;
 };
 
-type EntryWithDelta = LeaderboardEntry & { delta: number | null };
+type EntryWithDelta = LeaderboardEntry & { delta: number | null; not_submitted?: boolean };
 
 type UnicoSeis = {
   player_id: string;
@@ -65,17 +65,40 @@ export default function LeaderboardPage() {
     if (!leagueId) return;
 
     async function load() {
-      const { data } = await supabase
-        .from("leaderboard")
-        .select("*")
-        .eq("league_id", leagueId!)
-        .order("total_points", { ascending: false })
-        .order("exact_scores", { ascending: false });
+      const [{ data }, { data: paidPlayers }] = await Promise.all([
+        supabase
+          .from("leaderboard")
+          .select("*")
+          .eq("league_id", leagueId!)
+          .order("total_points", { ascending: false })
+          .order("exact_scores", { ascending: false }),
+        supabase
+          .from("players")
+          .select("id, name")
+          .eq("league_id", leagueId!)
+          .eq("paid", true),
+      ]);
 
       if (data) {
         const newEntries = (data as LeaderboardEntry[]).filter((e) => e.predictions_count >= 72);
         const newRanks: Record<string, number> = {};
         newEntries.forEach((e, i) => { newRanks[e.player_id] = i + 1; });
+
+        // Paid players who haven't submitted their full bracket yet
+        const submittedIds = new Set(newEntries.map((e) => e.player_id));
+        const unsubmitted: EntryWithDelta[] = (paidPlayers ?? [])
+          .filter((p) => !submittedIds.has(p.id))
+          .map((p) => ({
+            player_id: p.id,
+            player_name: p.name,
+            total_points: 0,
+            exact_scores: 0,
+            correct_results: 0,
+            predictions_count: 0,
+            league_id: leagueId!,
+            delta: null,
+            not_submitted: true,
+          }));
 
         const stored = localStorage.getItem("leaderboard_prev_ranks");
         const savedRanks: Record<string, number> = stored ? JSON.parse(stored) : prevRanks.current;
@@ -89,7 +112,7 @@ export default function LeaderboardPage() {
 
         localStorage.setItem("leaderboard_prev_ranks", JSON.stringify(newRanks));
         prevRanks.current = newRanks;
-        setEntries(withDelta);
+        setEntries([...withDelta, ...unsubmitted]);
         setLastUpdated(new Date());
 
         // Único 6: matches where exactly 1 player in this league scored 6 pts
@@ -309,7 +332,7 @@ export default function LeaderboardPage() {
       ) : (
         <div className="flex flex-col gap-2">
           {entries.map((entry, i) => {
-            const rank = i + 1;
+            const rank = entry.not_submitted ? null : i + 1;
             const isMe = entry.player_id === myPlayerId;
             const isExpanded = expandedPlayer === entry.player_id;
             const preds = playerPredictions[entry.player_id];
@@ -320,6 +343,30 @@ export default function LeaderboardPage() {
                 if (!byGroup[p.group]) byGroup[p.group] = [];
                 byGroup[p.group].push(p);
               }
+            }
+
+            // Unsubmitted paid player — show name only, no rank, no points
+            if (entry.not_submitted) {
+              return (
+                <div key={entry.player_id} className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-white opacity-60">
+                  <div className="flex items-center gap-3 px-4 py-3.5">
+                    <div className="flex items-center justify-center w-9 shrink-0">
+                      <span className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-400">
+                        —
+                      </span>
+                    </div>
+                    <Avatar name={entry.player_name} isMe={isMe} playerId={entry.player_id} />
+                    <div className="flex-1 min-w-0">
+                      <span className="font-bold text-sm text-gray-500 truncate block">
+                        {entry.player_name}
+                        {isMe && <span className="text-xs text-gray-400 font-normal ml-1">(tú)</span>}
+                      </span>
+                      <span className="text-xs text-gray-400">Sin quiniela enviada</span>
+                    </div>
+                    <span className="text-xs text-gray-300 shrink-0">⏳</span>
+                  </div>
+                </div>
+              );
             }
 
             return (
@@ -335,7 +382,7 @@ export default function LeaderboardPage() {
                 >
                   {/* Rank */}
                   <div className="flex items-center justify-center w-9 shrink-0">
-                    <RankBadge rank={rank} />
+                    <RankBadge rank={rank!} />
                   </div>
 
                   {/* Avatar */}

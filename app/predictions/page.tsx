@@ -6,6 +6,9 @@ import { supabase } from "@/lib/supabase";
 import type { Match, Prediction } from "@/types";
 import FlagImg from "@/components/FlagImg";
 
+// Auto-lock: predictions close when the tournament starts (June 11, 2026 noon ET)
+const TOURNAMENT_START = new Date("2026-06-11T16:00:00Z");
+
 type PredictionMap = Record<string, { home: string; away: string }>;
 type GroupedMatches = Record<string, Match[]>;
 
@@ -72,7 +75,7 @@ export default function PredictionsPage() {
         .single();
 
       if (matchData) setMatches(matchData as Match[]);
-      if (leagueData) setLocked(leagueData.predictions_locked);
+      if (leagueData) setLocked(leagueData.predictions_locked || new Date() >= TOURNAMENT_START);
       if (playerData) {
         setPaid(playerData.paid ?? false);
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

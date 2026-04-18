@@ -1,11 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
 
+// Auto-lock: predictions close when the tournament starts (June 11, 2026 noon ET)
+const TOURNAMENT_START = new Date("2026-06-11T16:00:00Z");
+
 export async function POST(req: NextRequest) {
   const { player_id, predictions, submit } = await req.json();
 
   if (!player_id || !Array.isArray(predictions) || predictions.length === 0) {
     return NextResponse.json({ error: "Datos inválidos." }, { status: 400 });
+  }
+
+  // Hard stop once the tournament has started
+  if (new Date() >= TOURNAMENT_START) {
+    return NextResponse.json(
+      { error: "Las predicciones están cerradas. El torneo ya comenzó." },
+      { status: 403 }
+    );
   }
 
   const supabase = createServiceClient();
@@ -21,7 +32,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Jugador no encontrado." }, { status: 404 });
   }
 
-  // Check if league predictions are locked
+  // Check if league predictions are locked (admin manual lock)
   const { data: league } = await supabase
     .from("leagues")
     .select("predictions_locked")

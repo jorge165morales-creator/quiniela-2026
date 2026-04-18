@@ -35,11 +35,12 @@ export default function UltimoCeroPage() {
   async function load() {
     setLoading(true);
 
-    // Get all players in the league
+    // Get all paid players in the league
     const { data: playerData } = await supabase
       .from("players")
       .select("id, name")
       .eq("league_id", leagueId!)
+      .eq("paid", true)
       .order("name");
 
     if (!playerData) { setLoading(false); return; }
