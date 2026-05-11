@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 const tabs = [
   { href: "/leaderboard", label: "Tabla",    icon: "📊" },
+  { href: "/hoy",         label: "Hoy",      icon: "📅" },
   { href: "/predictions", label: "Quiniela", icon: "✏️" },
   { href: "/rondas",      label: "Rondas",   icon: "🏅" },
   { href: "/goles",       label: "Goles",    icon: "⚽" },
