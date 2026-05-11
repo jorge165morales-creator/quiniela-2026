@@ -17,11 +17,16 @@ type TodayMatch = {
 };
 
 type MatchPrediction = {
-  player_id: string;
-  player_name: string;
+  match_id: string;
   pred_home: number;
   pred_away: number;
   points: number | null;
+};
+
+type SubmittedPlayer = {
+  player_id: string;
+  player_name: string;
+  preds: Record<string, MatchPrediction>;
 };
 
 export default function HoyPage() {
@@ -30,9 +35,8 @@ export default function HoyPage() {
   const [leagueLocked, setLeagueLocked] = useState(false);
   const [myPlayerId, setMyPlayerId] = useState<string | null>(null);
   const [matches, setMatches] = useState<TodayMatch[]>([]);
-  const [predictions, setPredictions] = useState<Record<string, MatchPrediction[]>>({});
+  const [players, setPlayers] = useState<SubmittedPlayer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeMatch, setActiveMatch] = useState<string | null>(null);
   const [isToday, setIsToday] = useState(true);
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
@@ -60,7 +64,6 @@ export default function HoyPage() {
       .single();
     setLeagueLocked(league?.predictions_locked ?? false);
 
-    // Today's date range in UTC
     const now = new Date();
     const todayStr = now.toISOString().split("T")[0];
     const tomorrowStr = new Date(now.getTime() + 86400000).toISOString().split("T")[0];
@@ -92,9 +95,6 @@ export default function HoyPage() {
       return;
     }
 
-    setActiveMatch(todayMatches[0].id);
-
-    // Submitted players only (predictions_count = 72)
     const { data: submitted } = await supabase
       .from("leaderboard")
       .select("player_id, player_name")
@@ -108,8 +108,6 @@ export default function HoyPage() {
 
     const matchIds = todayMatches.map((m) => m.id);
     const playerIds = submitted.map((p) => p.player_id);
-    const playerMap: Record<string, string> = {};
-    for (const p of submitted) playerMap[p.player_id] = p.player_name;
 
     const { data: preds } = await supabase
       .from("predictions")
@@ -117,22 +115,22 @@ export default function HoyPage() {
       .in("match_id", matchIds)
       .in("player_id", playerIds);
 
-    const grouped: Record<string, MatchPrediction[]> = {};
+    const predsByPlayer: Record<string, Record<string, MatchPrediction>> = {};
     for (const pred of preds ?? []) {
-      if (!grouped[pred.match_id]) grouped[pred.match_id] = [];
-      grouped[pred.match_id].push({
-        player_id: pred.player_id,
-        player_name: playerMap[pred.player_id] ?? "?",
+      if (!predsByPlayer[pred.player_id]) predsByPlayer[pred.player_id] = {};
+      predsByPlayer[pred.player_id][pred.match_id] = {
+        match_id: pred.match_id,
         pred_home: pred.home_score,
         pred_away: pred.away_score,
         points: pred.points,
-      });
-    }
-    for (const mid of Object.keys(grouped)) {
-      grouped[mid].sort((a, b) => a.player_name.localeCompare(b.player_name));
+      };
     }
 
-    setPredictions(grouped);
+    const rows: SubmittedPlayer[] = submitted
+      .map((p) => ({ player_id: p.player_id, player_name: p.player_name, preds: predsByPlayer[p.player_id] ?? {} }))
+      .sort((a, b) => a.player_name.localeCompare(b.player_name));
+
+    setPlayers(rows);
     setLoading(false);
   }
 
@@ -141,23 +139,15 @@ export default function HoyPage() {
   }
 
   function formatDate(iso: string) {
-    return new Date(iso).toLocaleDateString("es", { weekday: "long", month: "long", day: "numeric" });
+    return new Date(iso).toLocaleDateString("es", { month: "short", day: "numeric" });
   }
 
-  function pointsBadge(points: number | null, status: string) {
-    if (status !== "finished" || points === null) return null;
-    const colors: Record<number, string> = {
-      6: "bg-yellow-400 text-yellow-900",
-      4: "bg-blue-100 text-blue-700",
-      3: "bg-green-100 text-green-700",
-      1: "bg-gray-100 text-gray-500",
-      0: "bg-red-100 text-red-400",
-    };
-    return (
-      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${colors[points] ?? "bg-gray-100 text-gray-400"}`}>
-        {points}pts
-      </span>
-    );
+  function cellColor(points: number | null, status: string) {
+    if (status !== "finished" || points === null) return "";
+    if (points === 6) return "bg-yellow-50 text-yellow-800 font-black";
+    if (points >= 3) return "bg-blue-50 text-blue-700 font-bold";
+    if (points === 1) return "bg-gray-50 text-gray-500";
+    return "bg-red-50 text-red-400";
   }
 
   if (!leagueId) {
@@ -168,11 +158,8 @@ export default function HoyPage() {
     );
   }
 
-  const activeMatchData = matches.find((m) => m.id === activeMatch);
-  const activePreds = activeMatch ? (predictions[activeMatch] ?? []) : [];
-
   return (
-    <div className="max-w-lg mx-auto px-4 py-6 pb-28">
+    <div className="max-w-5xl mx-auto px-4 py-6 pb-28">
       <h1 className="text-2xl font-black text-gray-900 mb-0.5">
         {isToday ? "Partidos de hoy" : "Próximos partidos"}
       </h1>
@@ -182,155 +169,118 @@ export default function HoyPage() {
         <div className="text-center py-16 text-gray-400">Cargando...</div>
       ) : matches.length === 0 ? (
         <div className="text-center py-16 text-gray-400">No hay partidos programados.</div>
+      ) : !leagueLocked ? (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 text-center">
+          <p className="text-2xl mb-2">🔒</p>
+          <p className="text-gray-500 text-sm">Las predicciones se revelan cuando la liga esté cerrada.</p>
+        </div>
       ) : (
-        <>
-          {/* Match selector tabs */}
-          <div className="flex gap-2 overflow-x-auto pb-2 mb-5 scrollbar-hide">
-            {matches.map((m) => (
-              <button
-                key={m.id}
-                onClick={() => setActiveMatch(m.id)}
-                className={`flex-shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-xl border text-xs font-semibold transition-all ${
-                  activeMatch === m.id
-                    ? "bg-fifa-blue text-white border-fifa-blue shadow-sm"
-                    : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
-                }`}
-              >
-                <FlagImg team={m.home_team} h={14} />
-                <span className="text-[10px] opacity-60">vs</span>
-                <FlagImg team={m.away_team} h={14} />
-              </button>
-            ))}
-          </div>
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  {/* Player name column header */}
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide sticky left-0 bg-white z-10 min-w-[140px]">
+                    Participante
+                  </th>
 
-          {/* Active match card */}
-          {activeMatchData && (
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-              {/* Match header */}
-              <div className="bg-gray-50 border-b border-gray-100 p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-xs text-gray-400 font-medium">
-                    {activeMatchData.group
-                      ? `Grupo ${activeMatchData.group} · Jornada ${activeMatchData.matchday}`
-                      : `Jornada ${activeMatchData.matchday}`}
-                  </span>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    activeMatchData.status === "finished"
-                      ? "bg-gray-100 text-gray-500"
-                      : activeMatchData.status === "live"
-                      ? "bg-green-100 text-green-600 animate-pulse"
-                      : "bg-blue-50 text-blue-500"
-                  }`}>
-                    {activeMatchData.status === "finished"
-                      ? "Finalizado"
-                      : activeMatchData.status === "live"
-                      ? "En vivo"
-                      : formatTime(activeMatchData.kickoff_at)}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex flex-col items-center gap-1.5 flex-1">
-                    <FlagImg team={activeMatchData.home_team} h={28} />
-                    <span className="text-sm font-bold text-gray-900 text-center leading-tight">
-                      {activeMatchData.home_team}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col items-center px-4">
-                    {activeMatchData.status === "finished" && activeMatchData.home_score !== null ? (
-                      <span className="text-3xl font-black text-gray-900">
-                        {activeMatchData.home_score}–{activeMatchData.away_score}
-                      </span>
-                    ) : (
-                      <>
-                        <span className="text-xl font-black text-gray-300">vs</span>
-                        {!isToday && (
-                          <span className="text-[10px] text-gray-400 mt-1 text-center">
-                            {formatDate(activeMatchData.kickoff_at)}
+                  {/* One column per match */}
+                  {matches.map((m) => (
+                    <th key={m.id} className="px-3 py-2 text-center min-w-[110px]">
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="flex items-center gap-1.5 justify-center">
+                          <FlagImg team={m.home_team} h={13} />
+                          <span className="text-[10px] text-gray-400">vs</span>
+                          <FlagImg team={m.away_team} h={13} />
+                        </div>
+                        <div className="text-[10px] font-semibold text-gray-700 leading-tight text-center">
+                          {m.home_team.split(" ")[0]}
+                          <span className="text-gray-400 mx-0.5">–</span>
+                          {m.away_team.split(" ")[0]}
+                        </div>
+                        {m.status === "finished" && m.home_score !== null ? (
+                          <span className="text-[11px] font-black text-gray-900 bg-gray-100 px-2 py-0.5 rounded-full">
+                            {m.home_score}–{m.away_score}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-gray-400">
+                            {m.status === "live" ? "🟢 En vivo" : isToday ? formatTime(m.kickoff_at) : formatDate(m.kickoff_at)}
                           </span>
                         )}
-                      </>
-                    )}
-                  </div>
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
 
-                  <div className="flex flex-col items-center gap-1.5 flex-1">
-                    <FlagImg team={activeMatchData.away_team} h={28} />
-                    <span className="text-sm font-bold text-gray-900 text-center leading-tight">
-                      {activeMatchData.away_team}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Predictions list */}
-              <div className="p-4">
-                {!leagueLocked ? (
-                  <p className="text-center text-sm text-gray-400 py-6">
-                    🔒 Las predicciones se revelan cuando la liga esté cerrada
-                  </p>
-                ) : activePreds.length === 0 ? (
-                  <p className="text-center text-sm text-gray-400 py-6">
-                    Sin predicciones registradas
-                  </p>
+              <tbody>
+                {players.length === 0 ? (
+                  <tr>
+                    <td colSpan={matches.length + 1} className="text-center py-10 text-gray-400 text-sm">
+                      Sin participantes con quiniela completa
+                    </td>
+                  </tr>
                 ) : (
-                  <>
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-                      Predicciones · {activePreds.length} participante{activePreds.length !== 1 ? "s" : ""}
-                    </p>
-                    <div className="flex flex-col gap-2">
-                      {activePreds.map((pred) => {
-                        const isMe = pred.player_id === myPlayerId;
-                        return (
-                          <div
-                            key={pred.player_id}
-                            className={`flex items-center gap-3 py-2 px-3 rounded-xl ${
-                              isMe
-                                ? "bg-fifa-blue/5 border border-fifa-blue/20"
-                                : "bg-gray-50"
-                            }`}
-                          >
-                            {/* Avatar */}
+                  players.map((player, i) => {
+                    const isMe = player.player_id === myPlayerId;
+                    return (
+                      <tr
+                        key={player.player_id}
+                        className={`border-t border-gray-50 ${isMe ? "bg-fifa-blue/5" : i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}
+                      >
+                        {/* Player name */}
+                        <td className={`px-4 py-2.5 sticky left-0 z-10 ${isMe ? "bg-fifa-blue/5" : i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}>
+                          <div className="flex items-center gap-2">
                             <div
-                              className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0 overflow-hidden"
+                              className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0 overflow-hidden"
                               style={{ background: isMe ? "#003f7f" : "#9ca3af" }}
                             >
                               <img
-                                src={`${supabaseUrl}/storage/v1/object/public/Avatar/${pred.player_id}`}
+                                src={`${supabaseUrl}/storage/v1/object/public/Avatar/${player.player_id}`}
                                 onError={(e) => {
                                   const el = e.target as HTMLImageElement;
                                   el.style.display = "none";
                                   if (el.parentElement)
-                                    el.parentElement.innerText = pred.player_name[0].toUpperCase();
+                                    el.parentElement.innerText = player.player_name[0].toUpperCase();
                                 }}
                                 className="w-full h-full object-cover"
                                 alt=""
                               />
                             </div>
-
-                            {/* Name */}
-                            <span className={`flex-1 text-sm font-medium truncate ${isMe ? "text-fifa-blue font-semibold" : "text-gray-700"}`}>
-                              {pred.player_name}
-                              {isMe && <span className="text-[10px] text-fifa-blue/50 ml-1">(tú)</span>}
+                            <span className={`text-sm font-medium truncate max-w-[100px] ${isMe ? "text-fifa-blue font-semibold" : "text-gray-800"}`}>
+                              {player.player_name}
                             </span>
-
-                            {/* Predicted score */}
-                            <span className="text-sm font-black text-gray-900 shrink-0">
-                              {pred.pred_home}–{pred.pred_away}
-                            </span>
-
-                            {/* Points badge */}
-                            {pointsBadge(pred.points, activeMatchData.status)}
                           </div>
-                        );
-                      })}
-                    </div>
-                  </>
+                        </td>
+
+                        {/* Prediction per match */}
+                        {matches.map((m) => {
+                          const pred = player.preds[m.id];
+                          return (
+                            <td
+                              key={m.id}
+                              className={`px-3 py-2.5 text-center text-sm ${pred ? cellColor(pred.points, m.status) : "text-gray-300"}`}
+                            >
+                              {pred ? `${pred.pred_home}–${pred.pred_away}` : "–"}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })
                 )}
-              </div>
-            </div>
-          )}
-        </>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Legend */}
+          <div className="flex gap-4 px-4 py-3 border-t border-gray-100 bg-gray-50">
+            <span className="flex items-center gap-1.5 text-[10px] text-yellow-800"><span className="w-2.5 h-2.5 rounded-full bg-yellow-400 inline-block" />Exacto (6pts)</span>
+            <span className="flex items-center gap-1.5 text-[10px] text-blue-700"><span className="w-2.5 h-2.5 rounded-full bg-blue-200 inline-block" />Resultado (3–4pts)</span>
+            <span className="flex items-center gap-1.5 text-[10px] text-red-400"><span className="w-2.5 h-2.5 rounded-full bg-red-200 inline-block" />Fallo (0–1pts)</span>
+          </div>
+        </div>
       )}
     </div>
   );
