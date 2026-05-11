@@ -97,9 +97,11 @@ export default function HoyPage() {
 
     const { data: submitted } = await supabase
       .from("leaderboard")
-      .select("player_id, player_name")
+      .select("player_id, player_name, total_points, exact_scores")
       .eq("league_id", leagueId!)
-      .eq("predictions_count", 72);
+      .eq("predictions_count", 72)
+      .order("total_points", { ascending: false })
+      .order("exact_scores", { ascending: false });
 
     if (!submitted || submitted.length === 0) {
       setLoading(false);
@@ -127,8 +129,7 @@ export default function HoyPage() {
     }
 
     const rows: SubmittedPlayer[] = submitted
-      .map((p) => ({ player_id: p.player_id, player_name: p.player_name, preds: predsByPlayer[p.player_id] ?? {} }))
-      .sort((a, b) => a.player_name.localeCompare(b.player_name));
+      .map((p) => ({ player_id: p.player_id, player_name: p.player_name, preds: predsByPlayer[p.player_id] ?? {} }));
 
     setPlayers(rows);
     setLoading(false);
