@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import FlagImg from "@/components/FlagImg";
+import { calculatePoints } from "@/lib/scoring";
 
 type TodayMatch = {
   id: string;
@@ -143,12 +144,36 @@ export default function HoyPage() {
     return new Date(iso).toLocaleDateString("es", { month: "short", day: "numeric" });
   }
 
-  function cellColor(points: number | null, status: string) {
-    if (status !== "finished" || points === null) return "";
-    if (points === 6) return "bg-yellow-50 text-yellow-800 font-black";
-    if (points >= 3) return "bg-blue-50 text-blue-700 font-bold";
-    if (points === 1) return "bg-gray-50 text-gray-500";
+  function livePoints(match: TodayMatch, pred: MatchPrediction): number | null {
+    if (match.status === "finished") return pred.points;
+    if (match.status === "live" && match.home_score !== null && match.away_score !== null) {
+      return calculatePoints(match.home_score, match.away_score, pred.pred_home, pred.pred_away);
+    }
+    return null;
+  }
+
+  function cellStyle(pts: number | null, status: string) {
+    if ((status !== "finished" && status !== "live") || pts === null) return "";
+    if (pts === 6) return "bg-yellow-50 text-yellow-800 font-black";
+    if (pts >= 3) return "bg-blue-50 text-blue-700 font-bold";
+    if (pts === 1) return "bg-gray-50 text-gray-500";
     return "bg-red-50 text-red-400";
+  }
+
+  function ptsBadge(pts: number | null) {
+    if (pts === null) return null;
+    const colors: Record<number, string> = {
+      6: "bg-yellow-400 text-yellow-900",
+      4: "bg-blue-100 text-blue-700",
+      3: "bg-green-100 text-green-700",
+      1: "bg-gray-200 text-gray-500",
+      0: "bg-red-100 text-red-400",
+    };
+    return (
+      <span className={`text-[9px] font-black px-1 py-0.5 rounded-full ml-1 ${colors[pts] ?? "bg-gray-100 text-gray-400"}`}>
+        {pts}
+      </span>
+    );
   }
 
   if (!leagueId) {
@@ -200,13 +225,14 @@ export default function HoyPage() {
                           <span className="text-gray-400 mx-0.5">–</span>
                           {m.away_team.split(" ")[0]}
                         </div>
-                        {m.status === "finished" && m.home_score !== null ? (
-                          <span className="text-[11px] font-black text-gray-900 bg-gray-100 px-2 py-0.5 rounded-full">
+                        {(m.status === "finished" || m.status === "live") && m.home_score !== null ? (
+                          <span className={`text-[12px] font-black px-2 py-0.5 rounded-full ${m.status === "live" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-900"}`}>
                             {m.home_score}–{m.away_score}
+                            {m.status === "live" && <span className="text-[9px] ml-1 animate-pulse">🟢</span>}
                           </span>
                         ) : (
                           <span className="text-[10px] text-gray-400">
-                            {m.status === "live" ? "🟢 En vivo" : isToday ? formatTime(m.kickoff_at) : formatDate(m.kickoff_at)}
+                            {isToday ? formatTime(m.kickoff_at) : formatDate(m.kickoff_at)}
                           </span>
                         )}
                       </div>
@@ -258,12 +284,18 @@ export default function HoyPage() {
                         {/* Prediction per match */}
                         {matches.map((m) => {
                           const pred = player.preds[m.id];
+                          const pts = pred ? livePoints(m, pred) : null;
                           return (
                             <td
                               key={m.id}
-                              className={`px-3 py-2.5 text-center text-sm ${pred ? cellColor(pred.points, m.status) : "text-gray-300"}`}
+                              className={`px-3 py-2.5 text-center text-sm ${pred ? cellStyle(pts, m.status) : "text-gray-300"}`}
                             >
-                              {pred ? `${pred.pred_home}–${pred.pred_away}` : "–"}
+                              {pred ? (
+                                <span className="inline-flex items-center justify-center">
+                                  {pred.pred_home}–{pred.pred_away}
+                                  {ptsBadge(pts)}
+                                </span>
+                              ) : "–"}
                             </td>
                           );
                         })}
@@ -276,10 +308,11 @@ export default function HoyPage() {
           </div>
 
           {/* Legend */}
-          <div className="flex gap-4 px-4 py-3 border-t border-gray-100 bg-gray-50">
+          <div className="flex flex-wrap gap-3 px-4 py-3 border-t border-gray-100 bg-gray-50">
             <span className="flex items-center gap-1.5 text-[10px] text-yellow-800"><span className="w-2.5 h-2.5 rounded-full bg-yellow-400 inline-block" />Exacto (6pts)</span>
             <span className="flex items-center gap-1.5 text-[10px] text-blue-700"><span className="w-2.5 h-2.5 rounded-full bg-blue-200 inline-block" />Resultado (3–4pts)</span>
             <span className="flex items-center gap-1.5 text-[10px] text-red-400"><span className="w-2.5 h-2.5 rounded-full bg-red-200 inline-block" />Fallo (0–1pts)</span>
+            <span className="flex items-center gap-1.5 text-[10px] text-gray-400">🟢 Puntos en vivo (no confirmados)</span>
           </div>
         </div>
       )}
