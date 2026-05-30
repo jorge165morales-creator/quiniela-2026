@@ -79,13 +79,26 @@ export default function HoyPage() {
     let foundToday = true;
     if (!todayMatches || todayMatches.length === 0) {
       foundToday = false;
-      const { data: upcoming } = await supabase
+      // Get the next upcoming match to find its date, then fetch all matches that day
+      const { data: next } = await supabase
         .from("matches")
-        .select("id, home_team, away_team, group, matchday, kickoff_at, home_score, away_score, status")
+        .select("kickoff_at")
         .neq("status", "finished")
         .order("kickoff_at")
-        .limit(8);
-      todayMatches = upcoming ?? [];
+        .limit(1)
+        .single();
+
+      if (next) {
+        const nextDay = next.kickoff_at.split("T")[0];
+        const dayAfter = new Date(new Date(nextDay).getTime() + 86400000).toISOString().split("T")[0];
+        const { data: upcoming } = await supabase
+          .from("matches")
+          .select("id, home_team, away_team, group, matchday, kickoff_at, home_score, away_score, status")
+          .gte("kickoff_at", `${nextDay}T00:00:00`)
+          .lt("kickoff_at", `${dayAfter}T00:00:00`)
+          .order("kickoff_at");
+        todayMatches = upcoming ?? [];
+      }
     }
 
     setIsToday(foundToday);
