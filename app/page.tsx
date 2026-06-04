@@ -77,7 +77,7 @@ export default function Home() {
       <section className="bg-white rounded-2xl p-6 mb-4 border border-gray-200 shadow-sm">
         <h2 className="text-lg font-bold text-fifa-blue mb-3">Predicciones</h2>
         <ul className="text-gray-600 space-y-2 text-sm">
-          <li className="flex gap-2"><span className="text-fifa-gold shrink-0 font-bold">•</span>Cada participante predice el marcador exacto de los <strong className="text-gray-900">72 partidos</strong> de la fase de grupos.</li>
+          <li className="flex gap-2"><span className="text-fifa-gold shrink-0 font-bold">•</span>Cada participante predice el marcador exacto de los <strong className="text-gray-900 whitespace-nowrap">72 partidos</strong> de la fase de grupos.</li>
           <li className="flex gap-2"><span className="text-fifa-gold shrink-0 font-bold">•</span><span>Las predicciones deben enviarse antes de que inicie el torneo. Una vez cerradas, no se pueden modificar.</span></li>
           <li className="flex gap-2"><span className="text-fifa-gold shrink-0 font-bold">•</span>Puedes guardar tu progreso y regresar a completarlas antes del cierre.</li>
         </ul>
