@@ -52,7 +52,7 @@ export default function Home() {
         <h2 className="text-lg font-bold text-fifa-blue mb-3">Predicciones</h2>
         <ul className="text-gray-600 space-y-2 text-sm">
           <li className="flex gap-2"><span className="text-fifa-gold shrink-0 font-bold">•</span><span>Cada participante predice el marcador exacto de los <strong className="text-gray-900 whitespace-nowrap">72 partidos</strong> de la fase de grupos.</span></li>
-          <li className="flex gap-2"><span className="text-fifa-gold shrink-0 font-bold">•</span><span>Las predicciones cierran el <strong className="text-gray-900">11 de junio</strong>, 3 horas antes del partido inaugural.</span></li>
+          <li className="flex gap-2"><span className="text-fifa-gold shrink-0 font-bold">•</span><span>Las predicciones cierran el <strong className="text-gray-900">11 de Junio</strong>, 3 horas antes del partido inaugural.</span></li>
           <li className="flex gap-2"><span className="text-fifa-gold shrink-0 font-bold">•</span><span>Una vez cerradas, no se pueden modificar.</span></li>
           <li className="flex gap-2"><span className="text-fifa-gold shrink-0 font-bold">•</span>Puedes guardar tu progreso y regresar a completarlas antes del cierre.</li>
         </ul>
