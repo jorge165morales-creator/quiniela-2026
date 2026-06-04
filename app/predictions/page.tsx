@@ -40,6 +40,7 @@ export default function PredictionsPage() {
   const [hasAvatar, setHasAvatar] = useState<boolean | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const justUploadedRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState<string | null>(null);
 
@@ -144,6 +145,7 @@ export default function PredictionsPage() {
     const res = await fetch("/api/avatar", { method: "POST", body: form });
     const data = await res.json();
     if (res.ok) {
+      justUploadedRef.current = true;
       setAvatarUrl(`${data.url}?t=${Date.now()}`);
       setHasAvatar(true);
     } else {
@@ -349,8 +351,8 @@ export default function PredictionsPage() {
                 src={avatarUrl}
                 alt="Tu foto"
                 className="w-full h-full object-cover"
-                onLoad={() => setHasAvatar(true)}
-                onError={() => { setAvatarUrl(null); setHasAvatar(false); }}
+                onLoad={() => { justUploadedRef.current = false; setHasAvatar(true); }}
+                onError={() => { if (!justUploadedRef.current) { setAvatarUrl(null); setHasAvatar(false); } }}
               />
             ) : (
               <span className="w-full h-full bg-gray-100 flex items-center justify-center text-2xl font-black text-gray-400">
