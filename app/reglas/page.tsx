@@ -153,6 +153,9 @@ export default function ReglasPage() {
               <li><span className="font-semibold text-gray-700">1° único + 3 empatan en 2°:</span> el 1° recibe 60%; los tres reparten (30%+10%)÷3 ≈ 13% cada uno. Sin 3°.</li>
               <li><span className="font-semibold text-gray-700">2 empatan en 1° y 2 en 2°:</span> los de 1° reciben (60%+30%)÷2 = 45% cada uno; los de 2° reciben 10%÷2 = 5% cada uno.</li>
             </ul>
+            <p className="text-xs text-gray-400 mt-2 italic">
+              Nota: esta regla aplica únicamente si el empate persiste después de comparar el número de marcadores exactos (6 pts) de cada jugador.
+            </p>
           </div>
         </div>
       </section>
