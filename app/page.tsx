@@ -17,36 +17,10 @@ export default function Home() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      {/* Header + CTAs */}
+      {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-black mb-0.5 text-gray-900">Quiniela Mundial 2026</h1>
-        <p className="text-gray-500 text-sm mb-4">Fase de Grupos · FIFA World Cup 2026</p>
-        {ready && (
-          <div className="flex flex-wrap gap-2">
-            {username ? (
-              <>
-                <Link href="/predictions" className="px-5 py-2.5 bg-fifa-blue text-white font-bold rounded-xl text-sm hover:opacity-90 transition-opacity shadow-sm">
-                  Mis predicciones
-                </Link>
-                <Link href="/leaderboard" className="px-5 py-2.5 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl text-sm hover:bg-gray-50 transition-colors shadow-sm">
-                  Ver tabla
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link href="/signup" className="px-5 py-2.5 bg-fifa-blue text-white font-bold rounded-xl text-sm hover:opacity-90 transition-opacity shadow-sm">
-                  Registrarse
-                </Link>
-                <Link href="/login" className="px-5 py-2.5 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl text-sm hover:bg-gray-50 transition-colors shadow-sm">
-                  Iniciar sesión
-                </Link>
-                <Link href="/leaderboard" className="px-5 py-2.5 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl text-sm hover:bg-gray-50 transition-colors shadow-sm">
-                  Ver tabla
-                </Link>
-              </>
-            )}
-          </div>
-        )}
+        <p className="text-gray-500 text-sm">Fase de Grupos · FIFA World Cup 2026</p>
       </div>
 
       {/* Costo */}
@@ -77,7 +51,7 @@ export default function Home() {
       <section className="bg-white rounded-2xl p-6 mb-4 border border-gray-200 shadow-sm">
         <h2 className="text-lg font-bold text-fifa-blue mb-3">Predicciones</h2>
         <ul className="text-gray-600 space-y-2 text-sm">
-          <li className="flex gap-2"><span className="text-fifa-gold shrink-0 font-bold">•</span>Cada participante predice el marcador exacto de los <strong className="text-gray-900 whitespace-nowrap">72 partidos</strong> de la fase de grupos.</li>
+          <li className="flex gap-2"><span className="text-fifa-gold shrink-0 font-bold">•</span><span>Cada participante predice el marcador exacto de los <strong className="text-gray-900 whitespace-nowrap">72 partidos</strong> de la fase de grupos.</span></li>
           <li className="flex gap-2"><span className="text-fifa-gold shrink-0 font-bold">•</span><span>Las predicciones deben enviarse antes de que inicie el torneo. Una vez cerradas, no se pueden modificar.</span></li>
           <li className="flex gap-2"><span className="text-fifa-gold shrink-0 font-bold">•</span>Puedes guardar tu progreso y regresar a completarlas antes del cierre.</li>
         </ul>
@@ -203,6 +177,25 @@ export default function Home() {
           </div>
         </div>
       </section>
+      {/* CTAs */}
+      {ready && (
+        <div className="flex flex-wrap gap-3 mt-6 mb-2">
+          {username ? (
+            <Link href="/predictions" className="px-6 py-3 bg-fifa-blue text-white font-bold rounded-xl text-sm hover:opacity-90 transition-opacity shadow-sm">
+              Mis predicciones
+            </Link>
+          ) : (
+            <>
+              <Link href="/signup" className="px-6 py-3 bg-fifa-blue text-white font-bold rounded-xl text-sm hover:opacity-90 transition-opacity shadow-sm">
+                Registrarse
+              </Link>
+              <Link href="/login" className="px-6 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl text-sm hover:bg-gray-50 transition-colors shadow-sm">
+                Iniciar sesión
+              </Link>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
