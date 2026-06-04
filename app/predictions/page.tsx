@@ -41,6 +41,22 @@ export default function PredictionsPage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
+  const [timeLeft, setTimeLeft] = useState<string | null>(null);
+
+  useEffect(() => {
+    function update() {
+      const diff = TOURNAMENT_START.getTime() - Date.now();
+      if (diff <= 0) { setTimeLeft(null); return; }
+      const d = Math.floor(diff / 86400000);
+      const h = Math.floor((diff % 86400000) / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setTimeLeft(`${d}d ${String(h).padStart(2, "0")}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`);
+    }
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const pid = localStorage.getItem("player_id");
@@ -296,6 +312,14 @@ export default function PredictionsPage() {
 
   return (
     <div>
+      {/* Countdown */}
+      {!locked && timeLeft && (
+        <div className="bg-fifa-blue/5 border border-fifa-blue/20 rounded-2xl px-5 py-4 mb-6 flex items-center justify-between">
+          <p className="text-sm font-semibold text-gray-500">Quiniela cierra en:</p>
+          <p className="text-xl font-black text-fifa-blue font-mono tracking-tight">{timeLeft}</p>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
