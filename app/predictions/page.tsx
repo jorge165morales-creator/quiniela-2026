@@ -14,6 +14,16 @@ type GroupedMatches = Record<string, Match[]>;
 
 export default function PredictionsPage() {
   const router = useRouter();
+
+  function handleLogout() {
+    localStorage.removeItem("player_id");
+    localStorage.removeItem("player_name");
+    localStorage.removeItem("username");
+    localStorage.removeItem("league_id");
+    localStorage.removeItem("league_name");
+    window.dispatchEvent(new Event("quinielaauth"));
+    router.push("/");
+  }
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [playerName, setPlayerName] = useState<string | null>(null);
   const [leagueId, setLeagueId] = useState<string | null>(null);
@@ -294,6 +304,12 @@ export default function PredictionsPage() {
             Hola, <span className="text-gray-900 font-medium">{playerName}</span> —{" "}
             {completedCount}/{matches.length} partidos completados
           </p>
+          <button
+            onClick={handleLogout}
+            className="md:hidden mt-2 text-xs text-gray-400 hover:text-red-500 transition-colors"
+          >
+            Cerrar sesión
+          </button>
         </div>
 
         {/* Avatar upload */}
