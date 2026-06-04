@@ -186,6 +186,18 @@ export default function Home() {
               <span className={`text-2xl font-black ml-4 shrink-0 ${row.color}`}>{row.pct}</span>
             </div>
           ))}
+          <div className="mt-4 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">En caso de empate en el podio</p>
+            <p className="text-xs text-gray-500 mb-2">
+              Los premios de los puestos en disputa se acumulan y se reparten en partes iguales entre los empatados. El siguiente lugar ocupa la primera posición disponible.
+            </p>
+            <ul className="text-xs text-gray-500 space-y-1.5">
+              <li><span className="font-semibold text-gray-700">2 empatan en 1°:</span> cada uno recibe (60%+30%)÷2 = 45%. El 3° recibe 10%.</li>
+              <li><span className="font-semibold text-gray-700">3 empatan en 1°:</span> cada uno recibe el pozo completo ÷ 3 ≈ 33%. Sin 2° ni 3°.</li>
+              <li><span className="font-semibold text-gray-700">1° único + 3 empatan en 2°:</span> el 1° recibe 60%; los tres reparten (30%+10%)÷3 ≈ 13% cada uno. Sin 3°.</li>
+              <li><span className="font-semibold text-gray-700">2 empatan en 1° y 2 en 2°:</span> los de 1° reciben (60%+30%)÷2 = 45% cada uno; los de 2° reciben 10%÷2 = 5% cada uno.</li>
+            </ul>
+          </div>
         </div>
       </section>
     </div>
