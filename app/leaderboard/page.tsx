@@ -374,9 +374,12 @@ export default function LeaderboardPage() {
                 isMe ? "border-fifa-gold/50" : "border-gray-200"
               } bg-white`}>
                 {/* Player row */}
-                <button
+                <div
                   onClick={() => togglePlayer(entry.player_id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3.5 transition-colors text-left ${
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === "Enter" && togglePlayer(entry.player_id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3.5 transition-colors cursor-pointer ${
                     isExpanded ? "bg-gray-50" : "hover:bg-gray-50"
                   }`}
                 >
@@ -410,11 +413,24 @@ export default function LeaderboardPage() {
                     <span className="text-xs text-gray-400 ml-1">pts</span>
                   </div>
 
-                  {!leagueLocked && !isMe
-                    ? <span className="text-gray-300 text-xs shrink-0">🔒</span>
-                    : <span className="text-gray-300 text-xs shrink-0">{isExpanded ? "▲" : "▼"}</span>
-                  }
-                </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {leagueLocked && (
+                      <a
+                        href={`/predictions/print?player_id=${entry.player_id}`}
+                        target="_blank"
+                        onClick={(e) => e.stopPropagation()}
+                        title={`Ver PDF de ${entry.player_name}`}
+                        className="text-gray-300 hover:text-gray-500 transition-colors text-sm leading-none"
+                      >
+                        📄
+                      </a>
+                    )}
+                    {!leagueLocked && !isMe
+                      ? <span className="text-gray-300 text-xs">🔒</span>
+                      : <span className="text-gray-300 text-xs">{isExpanded ? "▲" : "▼"}</span>
+                    }
+                  </div>
+                </div>
 
                 {/* Predictions breakdown */}
                 {isExpanded && (

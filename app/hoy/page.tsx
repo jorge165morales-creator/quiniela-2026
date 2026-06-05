@@ -206,6 +206,11 @@ export default function HoyPage() {
 
       {loading ? (
         <div className="text-center py-16 text-gray-400">Cargando...</div>
+      ) : !leagueLocked ? (
+        <div className="text-center py-16 text-gray-400">
+          <p className="text-lg font-semibold text-gray-500 mb-1">Predicciones ocultas</p>
+          <p className="text-sm">Las predicciones se mostrarán cuando la liga esté cerrada.</p>
+        </div>
       ) : matches.length === 0 ? (
         <div className="text-center py-16 text-gray-400">No hay partidos programados.</div>
       ) : (

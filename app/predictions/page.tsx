@@ -411,6 +411,17 @@ export default function PredictionsPage() {
             style={{ width: `${(completedCount / matches.length) * 100}%` }}
           />
         </div>
+        {completedCount === matches.length && matches.length > 0 && (
+          <div className="mt-3 flex justify-center">
+            <a
+              href="/predictions/print"
+              target="_blank"
+              className="flex items-center gap-2 px-4 py-2 bg-white text-gray-600 font-semibold rounded-xl text-sm border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors"
+            >
+              📄 Ver / descargar PDF
+            </a>
+          </div>
+        )}
       </div>
 
       {/* Matches grouped by group */}
@@ -560,7 +571,7 @@ export default function PredictionsPage() {
         </div>
       )}
       {!locked && (
-        <div className="sticky bottom-20 md:bottom-4 flex justify-center gap-3 mt-8">
+        <div className="sticky bottom-20 md:bottom-4 flex justify-center gap-3 mt-8 flex-wrap">
           <button
             onClick={handleSave}
             disabled={saving}
@@ -577,6 +588,28 @@ export default function PredictionsPage() {
           >
             {saved ? "✓ Enviado" : hasAvatar === false ? "Falta tu foto" : paid === false ? "Pago pendiente" : "Enviar quiniela"}
           </button>
+
+          {completedCount === matches.length && (
+            <a
+              href="/predictions/print"
+              target="_blank"
+              className="px-5 py-3.5 bg-white text-gray-500 font-bold rounded-2xl text-sm shadow-lg hover:bg-gray-50 transition-colors border border-gray-200"
+            >
+              📄 PDF
+            </a>
+          )}
+        </div>
+      )}
+
+      {locked && (
+        <div className="flex justify-center mt-6">
+          <a
+            href="/predictions/print"
+            target="_blank"
+            className="flex items-center gap-2 px-5 py-3.5 bg-white text-gray-700 font-bold rounded-2xl text-sm shadow-lg hover:bg-gray-50 transition-colors border border-gray-200"
+          >
+            📄 Descargar PDF
+          </a>
         </div>
       )}
     </div>
