@@ -273,6 +273,9 @@ export default function PredictionsPage() {
       if (!teams[m.home_team]) teams[m.home_team] = { pts: 0, gf: 0, ga: 0, played: 0 };
       if (!teams[m.away_team]) teams[m.away_team] = { pts: 0, gf: 0, ga: 0, played: 0 };
     }
+
+    const played: Array<{ home: string; away: string; hg: number; ag: number }> = [];
+
     for (const m of groupMatches) {
       const pred = predictions[m.id];
       if (!pred || pred.home === "" || pred.away === "") continue;
@@ -288,10 +291,51 @@ export default function PredictionsPage() {
       if (h > a) { teams[m.home_team].pts += 3; }
       else if (h === a) { teams[m.home_team].pts += 1; teams[m.away_team].pts += 1; }
       else { teams[m.away_team].pts += 3; }
+      played.push({ home: m.home_team, away: m.away_team, hg: h, ag: a });
     }
-    return Object.entries(teams)
-      .map(([name, s]) => ({ name, ...s, gd: s.gf - s.ga }))
-      .sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || a.name.localeCompare(b.name));
+
+    function h2h(tiedNames: string[]) {
+      const set = new Set(tiedNames);
+      const stats: Record<string, { pts: number; gd: number; gf: number }> = {};
+      for (const n of tiedNames) stats[n] = { pts: 0, gd: 0, gf: 0 };
+      for (const m of played) {
+        if (!set.has(m.home) || !set.has(m.away)) continue;
+        stats[m.home].gf += m.hg;
+        stats[m.home].gd += m.hg - m.ag;
+        stats[m.away].gf += m.ag;
+        stats[m.away].gd += m.ag - m.hg;
+        if (m.hg > m.ag) stats[m.home].pts += 3;
+        else if (m.hg === m.ag) { stats[m.home].pts += 1; stats[m.away].pts += 1; }
+        else stats[m.away].pts += 3;
+      }
+      return stats;
+    }
+
+    const rows = Object.entries(teams).map(([name, s]) => ({ name, ...s, gd: s.gf - s.ga }));
+    rows.sort((a, b) => b.pts - a.pts);
+
+    // Resolve ties within equal-points groups using H2H then overall criteria
+    const result: typeof rows = [];
+    let i = 0;
+    while (i < rows.length) {
+      let j = i + 1;
+      while (j < rows.length && rows[j].pts === rows[i].pts) j++;
+      const group = rows.slice(i, j);
+      if (group.length > 1) {
+        const h = h2h(group.map((t) => t.name));
+        group.sort((a, b) =>
+          (h[b.name].pts - h[a.name].pts) ||
+          (h[b.name].gd - h[a.name].gd) ||
+          (h[b.name].gf - h[a.name].gf) ||
+          (b.gd - a.gd) ||
+          (b.gf - a.gf) ||
+          a.name.localeCompare(b.name)
+        );
+      }
+      result.push(...group);
+      i = j;
+    }
+    return result;
   }
 
   const completedCount = matches.filter(
