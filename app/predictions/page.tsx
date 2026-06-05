@@ -372,12 +372,23 @@ export default function PredictionsPage() {
             Hola, <span className="text-gray-900 font-medium">{playerName}</span> —{" "}
             {completedCount}/{matches.length} partidos completados
           </p>
-          <button
-            onClick={handleLogout}
-            className="md:hidden mt-2 text-xs text-gray-400 hover:text-red-500 transition-colors"
-          >
-            Cerrar sesión
-          </button>
+          <div className="flex items-center gap-3 mt-2">
+            <button
+              onClick={handleLogout}
+              className="md:hidden text-xs text-gray-400 hover:text-red-500 transition-colors"
+            >
+              Cerrar sesión
+            </button>
+            {completedCount > 0 && (
+              <a
+                href="/predictions/print"
+                target="_blank"
+                className="text-xs font-semibold text-fifa-blue hover:underline"
+              >
+                📄 Ver PDF
+              </a>
+            )}
+          </div>
         </div>
 
         {/* Avatar upload */}
@@ -455,17 +466,6 @@ export default function PredictionsPage() {
             style={{ width: `${(completedCount / matches.length) * 100}%` }}
           />
         </div>
-        {completedCount === matches.length && matches.length > 0 && (
-          <div className="mt-3 flex justify-center">
-            <a
-              href="/predictions/print"
-              target="_blank"
-              className="flex items-center gap-2 px-4 py-2 bg-white text-gray-600 font-semibold rounded-xl text-sm border border-gray-200 shadow-sm hover:bg-gray-50 transition-colors"
-            >
-              📄 Ver / descargar PDF
-            </a>
-          </div>
-        )}
       </div>
 
       {/* Matches grouped by group */}
@@ -633,15 +633,6 @@ export default function PredictionsPage() {
             {saved ? "✓ Enviado" : hasAvatar === false ? "Falta tu foto" : paid === false ? "Pago pendiente" : "Enviar quiniela"}
           </button>
 
-          {completedCount === matches.length && (
-            <a
-              href="/predictions/print"
-              target="_blank"
-              className="px-5 py-3.5 bg-white text-gray-500 font-bold rounded-2xl text-sm shadow-lg hover:bg-gray-50 transition-colors border border-gray-200"
-            >
-              📄 PDF
-            </a>
-          )}
         </div>
       )}
 
