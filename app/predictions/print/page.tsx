@@ -3,10 +3,24 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { FLAG_ISO } from "@/lib/flags";
 import type { Match } from "@/types";
 
 type PredMap = Record<string, { home: number; away: number }>;
-type GroupedMatches = Record<string, Match[]>;
+
+function flagImg(team: string) {
+  const iso = FLAG_ISO[team];
+  if (!iso) return null;
+  return (
+    <img
+      src={`https://flagcdn.com/w20/${iso}.png`}
+      width={16}
+      height={11}
+      className="inline-block object-cover border border-gray-100 align-middle"
+      alt={team}
+    />
+  );
+}
 
 function PrintContent() {
   const searchParams = useSearchParams();
@@ -50,13 +64,11 @@ function PrintContent() {
     load();
   }, [targetPlayerId]);
 
-  const grouped: GroupedMatches = {};
-  for (const m of matches) {
-    const key = m.group || "?";
-    if (!grouped[key]) grouped[key] = [];
-    grouped[key].push(m);
-  }
-  const groupEntries = Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b));
+  useEffect(() => {
+    if (!loading && playerName) {
+      setTimeout(() => window.print(), 400);
+    }
+  }, [loading, playerName]);
 
   if (loading) {
     return <div className="p-8 text-gray-400 text-sm">Cargando predicciones...</div>;
@@ -72,6 +84,29 @@ function PrintContent() {
   }
 
   const predCount = Object.keys(preds).length;
+  const half = Math.ceil(matches.length / 2);
+  const col1 = matches.slice(0, half);
+  const col2 = matches.slice(half);
+
+  function MatchRow({ m }: { m: Match }) {
+    const pred = preds[m.id];
+    const hasPred = pred != null;
+    return (
+      <div className="flex items-center px-2 py-1.5 border-b border-gray-100 last:border-0 text-[10px]">
+        <span className="flex-1 flex items-center justify-end gap-1 text-gray-700 font-medium truncate">
+          <span className="truncate">{m.home_team}</span>
+          {flagImg(m.home_team)}
+        </span>
+        <span className={`w-14 text-center font-black shrink-0 tabular-nums mx-1 ${hasPred ? "text-fifa-blue" : "text-gray-300"}`}>
+          {hasPred ? `${pred.home}–${pred.away}` : "–"}
+        </span>
+        <span className="flex-1 flex items-center gap-1 text-gray-700 font-medium truncate">
+          {flagImg(m.away_team)}
+          <span className="truncate">{m.away_team}</span>
+        </span>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -79,56 +114,34 @@ function PrintContent() {
         @media print {
           header, nav, .no-print { display: none !important; }
           body { background: white; }
-          .print-grid { grid-template-columns: 1fr 1fr !important; }
         }
       `}</style>
 
-      <div className="max-w-4xl mx-auto px-6 py-6">
+      <div className="max-w-4xl mx-auto px-4 py-4">
         {/* Header */}
-        <div className="flex items-start justify-between mb-6 pb-4 border-b border-gray-200">
+        <div className="flex items-start justify-between mb-4 pb-3 border-b border-gray-200">
           <div>
-            <h1 className="text-2xl font-black text-gray-900">Quiniela Mundial 2026</h1>
-            <p className="text-gray-500 text-sm mt-0.5">Fase de Grupos · {playerName}</p>
+            <h1 className="text-xl font-black text-gray-900">Quiniela Mundial 2026</h1>
+            <p className="text-gray-500 text-xs mt-0.5">Fase de Grupos · {playerName}</p>
           </div>
-          <div className="text-right text-xs text-gray-400 mt-1 shrink-0 ml-4">
+          <div className="text-right text-xs text-gray-400 mt-0.5 shrink-0 ml-4">
             <p>{new Date().toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" })}</p>
             <p className="mt-0.5 font-semibold">{predCount} / {matches.length} predicciones</p>
           </div>
         </div>
 
-        {/* Groups grid */}
-        <div className="print-grid grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {groupEntries.map(([group, groupMatches]) => (
-            <div key={group}>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="w-6 h-6 bg-fifa-blue rounded flex items-center justify-center text-[10px] font-black text-white shrink-0">
-                  {group}
-                </span>
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Grupo {group}</span>
-              </div>
-              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                {groupMatches.map((m, i) => {
-                  const pred = preds[m.id];
-                  return (
-                    <div
-                      key={m.id}
-                      className={`flex items-center px-3 py-2 text-xs ${i > 0 ? "border-t border-gray-100" : ""}`}
-                    >
-                      <span className="flex-1 text-right text-gray-700 font-medium truncate pr-2">{m.home_team}</span>
-                      <span className={`w-16 text-center font-black shrink-0 tabular-nums ${pred ? "text-gray-900" : "text-gray-300"}`}>
-                        {pred ? `${pred.home} – ${pred.away}` : "– – –"}
-                      </span>
-                      <span className="flex-1 text-left text-gray-700 font-medium truncate pl-2">{m.away_team}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+        {/* Two-column flat list */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            {col1.map((m) => <MatchRow key={m.id} m={m} />)}
+          </div>
+          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            {col2.map((m) => <MatchRow key={m.id} m={m} />)}
+          </div>
         </div>
 
         {/* Footer */}
-        <p className="text-center text-xs text-gray-400 mt-8 pt-4 border-t border-gray-100">
+        <p className="text-center text-[10px] text-gray-400 mt-4 pt-3 border-t border-gray-100">
           Quiniela Mundial 2026 — amigos2026.vercel.app
         </p>
       </div>

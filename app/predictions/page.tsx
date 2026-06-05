@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { Match, Prediction } from "@/types";
 import FlagImg from "@/components/FlagImg";
+import { FLAG_ISO } from "@/lib/flags";
 
 // Auto-lock: predictions close when the tournament starts (June 11, 2026 noon ET)
 const TOURNAMENT_START = new Date("2026-06-11T16:00:00Z");
@@ -24,6 +25,58 @@ export default function PredictionsPage() {
     window.dispatchEvent(new Event("quinielaauth"));
     router.push("/");
   }
+
+  function handlePrint() {
+    const half = Math.ceil(matches.length / 2);
+    function makeRows(list: Match[]) {
+      return list.map((m) => {
+        const pred = predictions[m.id];
+        const hasScore = pred && pred.home !== "" && pred.away !== "";
+        const score = hasScore ? `${pred.home} – ${pred.away}` : "– – –";
+        const hIso = FLAG_ISO[m.home_team] ?? "";
+        const aIso = FLAG_ISO[m.away_team] ?? "";
+        const hFlag = hIso ? `<img class="flag" src="https://flagcdn.com/w20/${hIso}.png">` : "";
+        const aFlag = aIso ? `<img class="flag" src="https://flagcdn.com/w20/${aIso}.png">` : "";
+        return `<tr>
+          <td class="home"><span class="team">${m.home_team}</span> ${hFlag}</td>
+          <td class="score${hasScore ? "" : " empty"}">${score}</td>
+          <td class="away">${aFlag} <span class="team">${m.away_team}</span></td>
+        </tr>`;
+      }).join("");
+    }
+    const predCount = matches.filter((m) => { const p = predictions[m.id]; return p && p.home !== "" && p.away !== ""; }).length;
+    const date = new Date().toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" });
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Quiniela ${playerName ?? ""}</title><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:10px;padding:12px 16px;background:#fff;color:#111}
+h1{font-size:15px;font-weight:900}
+.sub{color:#666;font-size:9px;margin:2px 0 10px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+table{width:100%;border-collapse:collapse}
+tr{border-bottom:1px solid #eee}
+tr:last-child{border-bottom:none}
+td{padding:3px 4px;vertical-align:middle}
+.home{text-align:right}
+.score{text-align:center;font-weight:900;color:#003f7f;white-space:nowrap;min-width:46px}
+.score.empty{color:#ccc;font-weight:400}
+.away{text-align:left}
+.team{font-size:9px;color:#333}
+.flag{width:14px;height:10px;object-fit:cover;vertical-align:middle;border:1px solid #eee}
+.footer{margin-top:10px;text-align:center;font-size:8px;color:#aaa;border-top:1px solid #eee;padding-top:8px}
+@media print{@page{margin:10mm}}
+</style></head><body>
+<h1>Quiniela Mundial 2026</h1>
+<p class="sub">Fase de Grupos · ${playerName ?? ""} · ${predCount}/${matches.length} predicciones · ${date}</p>
+<div class="cols">
+  <table>${makeRows(matches.slice(0, half))}</table>
+  <table>${makeRows(matches.slice(half))}</table>
+</div>
+<p class="footer">Quiniela Mundial 2026 — amigos2026.vercel.app</p>
+</body></html>`;
+    const w = window.open("", "_blank", "width=900,height=700");
+    if (w) { w.document.write(html); w.document.close(); w.focus(); setTimeout(() => w.print(), 400); }
+  }
+
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [playerName, setPlayerName] = useState<string | null>(null);
   const [leagueId, setLeagueId] = useState<string | null>(null);
@@ -380,13 +433,12 @@ export default function PredictionsPage() {
               Cerrar sesión
             </button>
             {completedCount > 0 && (
-              <a
-                href="/predictions/print"
-                target="_blank"
+              <button
+                onClick={handlePrint}
                 className="text-xs font-semibold text-fifa-blue hover:underline"
               >
                 📄 Ver PDF
-              </a>
+              </button>
             )}
           </div>
         </div>

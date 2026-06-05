@@ -14,7 +14,7 @@ export const FLAGS: Record<string, string> = {
 };
 
 // ISO 3166-1 alpha-2 codes for flagcdn.com
-const FLAG_ISO: Record<string, string> = {
+export const FLAG_ISO: Record<string, string> = {
   "México": "mx", "Sudáfrica": "za", "Corea del Sur": "kr", "Chequia": "cz",
   "Canadá": "ca", "Catar": "qa", "Suiza": "ch", "Bosnia y Herzegovina": "ba",
   "Brasil": "br", "Marruecos": "ma", "Haití": "ht", "Escocia": "gb-sct",
