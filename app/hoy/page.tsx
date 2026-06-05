@@ -27,8 +27,39 @@ type MatchPrediction = {
 type SubmittedPlayer = {
   player_id: string;
   player_name: string;
+  total_points: number;
+  exact_scores: number;
   preds: Record<string, MatchPrediction>;
 };
+
+function shortName(name: string) {
+  return name.split(" ")[0];
+}
+
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("es", { weekday: "short", month: "short", day: "numeric" });
+}
+
+function livePoints(match: TodayMatch, pred: MatchPrediction): number | null {
+  if (match.status === "finished") return pred.points;
+  if (match.status === "live" && match.home_score !== null && match.away_score !== null) {
+    return calculatePoints(match.home_score, match.away_score, pred.pred_home, pred.pred_away);
+  }
+  return null;
+}
+
+function ptsBg(pts: number | null, status: string): string {
+  if (pts === null || (status !== "finished" && status !== "live")) return "";
+  if (pts === 6) return "bg-yellow-100 text-yellow-900 font-black";
+  if (pts === 4) return "bg-blue-100 text-blue-800 font-bold";
+  if (pts === 3) return "bg-green-100 text-green-800 font-bold";
+  if (pts === 1) return "bg-gray-100 text-gray-600";
+  return "bg-red-50 text-red-400";
+}
 
 export default function HoyPage() {
   const [leagueId, setLeagueId] = useState<string | null>(null);
@@ -37,6 +68,7 @@ export default function HoyPage() {
   const [myPlayerId, setMyPlayerId] = useState<string | null>(null);
   const [matches, setMatches] = useState<TodayMatch[]>([]);
   const [players, setPlayers] = useState<SubmittedPlayer[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isToday, setIsToday] = useState(true);
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -54,6 +86,28 @@ export default function HoyPage() {
     if (!leagueId) return;
     load();
   }, [leagueId]);
+
+  // Realtime: subscribe to match score changes for today's matches
+  useEffect(() => {
+    if (matches.length === 0) return;
+    const ids = matches.map((m) => m.id);
+    const channel = supabase
+      .channel("hoy-matches-live")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "matches" },
+        (payload) => {
+          const updated = payload.new as TodayMatch;
+          if (ids.includes(updated.id)) {
+            setMatches((prev) =>
+              prev.map((m) => (m.id === updated.id ? { ...m, ...updated } : m))
+            );
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [matches.length]);
 
   async function load() {
     setLoading(true);
@@ -79,7 +133,6 @@ export default function HoyPage() {
     let foundToday = true;
     if (!todayMatches || todayMatches.length === 0) {
       foundToday = false;
-      // Get the next upcoming match to find its date, then fetch all matches that day
       const { data: next } = await supabase
         .from("matches")
         .select("kickoff_at")
@@ -102,12 +155,15 @@ export default function HoyPage() {
     }
 
     setIsToday(foundToday);
-    setMatches(todayMatches ?? []);
+    const matchList = (todayMatches ?? []) as TodayMatch[];
+    setMatches(matchList);
 
-    if (!todayMatches || todayMatches.length === 0) {
-      setLoading(false);
-      return;
-    }
+    // Auto-select: prefer live match, then first upcoming, then first
+    const live = matchList.find((m) => m.status === "live");
+    const upcoming = matchList.find((m) => m.status === "upcoming");
+    setSelectedId((live ?? upcoming ?? matchList[0])?.id ?? null);
+
+    if (matchList.length === 0) { setLoading(false); return; }
 
     const { data: submitted } = await supabase
       .from("leaderboard")
@@ -117,12 +173,9 @@ export default function HoyPage() {
       .order("total_points", { ascending: false })
       .order("exact_scores", { ascending: false });
 
-    if (!submitted || submitted.length === 0) {
-      setLoading(false);
-      return;
-    }
+    if (!submitted || submitted.length === 0) { setLoading(false); return; }
 
-    const matchIds = todayMatches.map((m) => m.id);
+    const matchIds = matchList.map((m) => m.id);
     const playerIds = submitted.map((p) => p.player_id);
 
     const { data: preds } = await supabase
@@ -142,52 +195,22 @@ export default function HoyPage() {
       };
     }
 
-    const rows: SubmittedPlayer[] = submitted
-      .map((p) => ({ player_id: p.player_id, player_name: p.player_name, preds: predsByPlayer[p.player_id] ?? {} }));
-
-    setPlayers(rows);
+    setPlayers(
+      submitted.map((p) => ({
+        player_id: p.player_id,
+        player_name: p.player_name,
+        total_points: p.total_points,
+        exact_scores: p.exact_scores,
+        preds: predsByPlayer[p.player_id] ?? {},
+      }))
+    );
     setLoading(false);
   }
 
-  function formatTime(iso: string) {
-    return new Date(iso).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
-  }
-
-  function formatDate(iso: string) {
-    return new Date(iso).toLocaleDateString("es", { month: "short", day: "numeric" });
-  }
-
-  function livePoints(match: TodayMatch, pred: MatchPrediction): number | null {
-    if (match.status === "finished") return pred.points;
-    if (match.status === "live" && match.home_score !== null && match.away_score !== null) {
-      return calculatePoints(match.home_score, match.away_score, pred.pred_home, pred.pred_away);
-    }
-    return null;
-  }
-
-  function cellStyle(pts: number | null, status: string) {
-    if ((status !== "finished" && status !== "live") || pts === null) return "";
-    if (pts === 6) return "bg-yellow-50 text-yellow-800 font-black";
-    if (pts >= 3) return "bg-blue-50 text-blue-700 font-bold";
-    if (pts === 1) return "bg-gray-50 text-gray-500";
-    return "bg-red-50 text-red-400";
-  }
-
-  function ptsBadge(pts: number | null) {
-    if (pts === null) return null;
-    const colors: Record<number, string> = {
-      6: "bg-yellow-400 text-yellow-900",
-      4: "bg-blue-100 text-blue-700",
-      3: "bg-green-100 text-green-700",
-      1: "bg-gray-200 text-gray-500",
-      0: "bg-red-100 text-red-400",
-    };
-    return (
-      <span className={`text-[9px] font-black px-1 py-0.5 rounded-full ml-1 ${colors[pts] ?? "bg-gray-100 text-gray-400"}`}>
-        {pts}
-      </span>
-    );
-  }
+  const selectedMatch = matches.find((m) => m.id === selectedId) ?? null;
+  const isLive = selectedMatch?.status === "live";
+  const isFinished = selectedMatch?.status === "finished";
+  const hasScore = selectedMatch && selectedMatch.home_score !== null;
 
   if (!leagueId) {
     return (
@@ -198,11 +221,7 @@ export default function HoyPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 pb-28">
-      <h1 className="text-2xl font-black text-gray-900 mb-0.5">
-        {isToday ? "Partidos de hoy" : "Próximos partidos"}
-      </h1>
-      <p className="text-sm text-gray-400 mb-5">{leagueName}</p>
+    <div className="max-w-2xl mx-auto px-3 py-4 pb-28">
 
       {loading ? (
         <div className="text-center py-16 text-gray-400">Cargando...</div>
@@ -214,120 +233,189 @@ export default function HoyPage() {
       ) : matches.length === 0 ? (
         <div className="text-center py-16 text-gray-400">No hay partidos programados.</div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  {/* Player name column header */}
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide sticky left-0 bg-white z-10 min-w-[140px]">
-                    Participante
-                  </th>
+        <>
+          {/* ── Main card ── */}
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
 
-                  {/* One column per match */}
-                  {matches.map((m) => (
-                    <th key={m.id} className="px-3 py-2 text-center min-w-[110px]">
-                      <div className="flex flex-col items-center gap-1">
-                        <div className="flex items-center gap-1.5 justify-center">
-                          <FlagImg team={m.home_team} h={13} />
-                          <span className="text-[10px] text-gray-400">vs</span>
-                          <FlagImg team={m.away_team} h={13} />
-                        </div>
-                        <div className="text-[10px] font-semibold text-gray-700 leading-tight text-center">
-                          {m.home_team.split(" ")[0]}
-                          <span className="text-gray-400 mx-0.5">–</span>
-                          {m.away_team.split(" ")[0]}
-                        </div>
-                        {(m.status === "finished" || m.status === "live") && m.home_score !== null ? (
-                          <span className={`text-[12px] font-black px-2 py-0.5 rounded-full ${m.status === "live" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-900"}`}>
-                            {m.home_score}–{m.away_score}
-                            {m.status === "live" && <span className="text-[9px] ml-1 animate-pulse">🟢</span>}
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-gray-400">
-                            {isToday ? formatTime(m.kickoff_at) : formatDate(m.kickoff_at)}
-                          </span>
-                        )}
-                      </div>
+            {/* Title bar */}
+            <div className="px-4 pt-4 pb-2 border-b border-gray-100">
+              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                {isToday ? "Partidos de hoy" : `Próximos — ${selectedMatch ? formatDate(selectedMatch.kickoff_at) : ""}`}
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5">{leagueName}</p>
+            </div>
+
+            {/* Game selector buttons */}
+            <div className="flex gap-2 px-3 py-3 overflow-x-auto border-b border-gray-100 scrollbar-hide">
+              {matches.map((m, idx) => {
+                const active = m.id === selectedId;
+                const mLive = m.status === "live";
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() => setSelectedId(m.id)}
+                    className={`flex-shrink-0 flex flex-col items-center gap-1 px-3 py-2 rounded-xl border text-[10px] font-bold transition-colors ${
+                      active
+                        ? "bg-fifa-blue text-white border-fifa-blue"
+                        : "bg-gray-50 text-gray-500 border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1">
+                      <FlagImg team={m.home_team} h={12} />
+                      <span className="text-[9px] opacity-60">vs</span>
+                      <FlagImg team={m.away_team} h={12} />
+                    </div>
+                    <span className="whitespace-nowrap">
+                      {mLive && <span className="mr-0.5">🟢</span>}
+                      {m.home_score !== null
+                        ? `${m.home_score}–${m.away_score}`
+                        : isToday ? formatTime(m.kickoff_at) : `J${idx + 1}`}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Match score header */}
+            {selectedMatch && (
+              <div className="grid grid-cols-2 border-b border-gray-100">
+                {/* Home */}
+                <div className="flex items-center gap-2 px-4 py-3 bg-[#003f7f]">
+                  <FlagImg team={selectedMatch.home_team} h={22} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-black text-sm leading-tight truncate">{selectedMatch.home_team}</p>
+                    <p className="text-blue-200 text-[10px]">Local</p>
+                  </div>
+                  <span className="text-3xl font-black text-white tabular-nums ml-2">
+                    {hasScore ? selectedMatch.home_score : "–"}
+                  </span>
+                </div>
+                {/* Away */}
+                <div className="flex items-center gap-2 px-4 py-3 bg-gray-700 flex-row-reverse">
+                  <FlagImg team={selectedMatch.away_team} h={22} />
+                  <div className="flex-1 min-w-0 text-right">
+                    <p className="text-white font-black text-sm leading-tight truncate">{selectedMatch.away_team}</p>
+                    <p className="text-gray-300 text-[10px]">
+                      {isLive ? <span className="text-green-300 animate-pulse font-bold">EN VIVO 🟢</span>
+                        : isFinished ? "Finalizado"
+                        : formatTime(selectedMatch.kickoff_at)}
+                    </p>
+                  </div>
+                  <span className="text-3xl font-black text-white tabular-nums mr-2">
+                    {hasScore ? selectedMatch.away_score : "–"}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    <th className="text-center px-2 py-2 text-[10px] font-bold text-gray-500 uppercase w-8">Pos</th>
+                    <th className="text-left px-3 py-2 text-[10px] font-bold text-gray-500 uppercase">Nombre</th>
+                    <th className="text-center px-2 py-2 text-[10px] font-bold text-[#003f7f] uppercase w-10">
+                      {selectedMatch ? shortName(selectedMatch.home_team) : "L"}
                     </th>
-                  ))}
-                </tr>
-              </thead>
-
-              <tbody>
-                {players.length === 0 ? (
-                  <tr>
-                    <td colSpan={matches.length + 1} className="text-center py-10 text-gray-400 text-sm">
-                      Sin participantes con quiniela completa
-                    </td>
+                    <th className="text-center px-2 py-2 text-[10px] font-bold text-gray-600 uppercase w-10">
+                      {selectedMatch ? shortName(selectedMatch.away_team) : "V"}
+                    </th>
+                    <th className="text-center px-2 py-2 text-[10px] font-bold text-gray-500 uppercase w-12">Pts</th>
+                    <th className="text-center px-2 py-2 text-[10px] font-bold text-gray-500 uppercase w-12">Acum</th>
                   </tr>
-                ) : (
-                  players.map((player, i) => {
-                    const isMe = player.player_id === myPlayerId;
-                    return (
-                      <tr
-                        key={player.player_id}
-                        className={`border-t border-gray-50 ${isMe ? "bg-fifa-blue/5" : i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}
-                      >
-                        {/* Player name */}
-                        <td className={`px-4 py-2.5 sticky left-0 z-10 ${isMe ? "bg-fifa-blue/5" : i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}>
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0 overflow-hidden"
-                              style={{ background: isMe ? "#003f7f" : "#9ca3af" }}
-                            >
-                              <img
-                                src={`${supabaseUrl}/storage/v1/object/public/Avatar/${player.player_id}`}
-                                onError={(e) => {
-                                  const el = e.target as HTMLImageElement;
-                                  el.style.display = "none";
-                                  if (el.parentElement)
-                                    el.parentElement.innerText = player.player_name[0].toUpperCase();
-                                }}
-                                className="w-full h-full object-cover"
-                                alt=""
-                              />
-                            </div>
-                            <span className={`text-sm font-medium truncate max-w-[100px] ${isMe ? "text-fifa-blue font-semibold" : "text-gray-800"}`}>
-                              {player.player_name}
+                </thead>
+                <tbody>
+                  {players.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-10 text-gray-400 text-sm">
+                        Sin participantes con quiniela completa
+                      </td>
+                    </tr>
+                  ) : (
+                    players.map((player, i) => {
+                      const isMe = player.player_id === myPlayerId;
+                      const pred = selectedMatch ? player.preds[selectedMatch.id] : undefined;
+                      const pts = pred && selectedMatch ? livePoints(selectedMatch, pred) : null;
+                      const rowBg = isMe
+                        ? "bg-blue-50"
+                        : i % 2 === 0 ? "bg-white" : "bg-gray-50/60";
+
+                      return (
+                        <tr key={player.player_id} className={`border-b border-gray-100 last:border-0 ${rowBg}`}>
+                          {/* Pos */}
+                          <td className="text-center px-2 py-2">
+                            <span className={`text-xs font-black ${i === 0 ? "text-yellow-500" : i === 1 ? "text-gray-400" : i === 2 ? "text-orange-400" : "text-gray-400"}`}>
+                              {i + 1}
                             </span>
-                          </div>
-                        </td>
+                          </td>
 
-                        {/* Prediction per match */}
-                        {matches.map((m) => {
-                          const pred = player.preds[m.id];
-                          const pts = pred ? livePoints(m, pred) : null;
-                          return (
-                            <td
-                              key={m.id}
-                              className={`px-3 py-2.5 text-center text-sm ${pred ? cellStyle(pts, m.status) : "text-gray-300"}`}
-                            >
-                              {pred ? (
-                                <span className="inline-flex items-center justify-center">
-                                  {pred.pred_home}–{pred.pred_away}
-                                  {ptsBadge(pts)}
-                                </span>
-                              ) : "–"}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                          {/* Name */}
+                          <td className="px-3 py-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0 overflow-hidden bg-gray-300">
+                                <img
+                                  src={`${supabaseUrl}/storage/v1/object/public/Avatar/${player.player_id}`}
+                                  onError={(e) => {
+                                    const el = e.target as HTMLImageElement;
+                                    el.style.display = "none";
+                                    if (el.parentElement)
+                                      el.parentElement.innerText = player.player_name[0].toUpperCase();
+                                  }}
+                                  className="w-full h-full object-cover"
+                                  alt=""
+                                />
+                              </div>
+                              <span className={`text-xs font-medium truncate max-w-[100px] ${isMe ? "text-fifa-blue font-bold" : "text-gray-800"}`}>
+                                {player.player_name}
+                              </span>
+                            </div>
+                          </td>
 
-          {/* Legend */}
-          <div className="flex flex-wrap gap-3 px-4 py-3 border-t border-gray-100 bg-gray-50">
-            <span className="flex items-center gap-1.5 text-[10px] text-yellow-800"><span className="w-2.5 h-2.5 rounded-full bg-yellow-400 inline-block" />Exacto (6pts)</span>
-            <span className="flex items-center gap-1.5 text-[10px] text-blue-700"><span className="w-2.5 h-2.5 rounded-full bg-blue-200 inline-block" />Resultado (3–4pts)</span>
-            <span className="flex items-center gap-1.5 text-[10px] text-red-400"><span className="w-2.5 h-2.5 rounded-full bg-red-200 inline-block" />Fallo (0–1pts)</span>
-            <span className="flex items-center gap-1.5 text-[10px] text-gray-400">🟢 Puntos en vivo (no confirmados)</span>
+                          {/* Predicted home */}
+                          <td className={`text-center px-2 py-2 text-sm font-bold tabular-nums ${pred ? "text-[#003f7f]" : "text-gray-300"}`}>
+                            {pred ? pred.pred_home : "–"}
+                          </td>
+
+                          {/* Predicted away */}
+                          <td className={`text-center px-2 py-2 text-sm font-bold tabular-nums ${pred ? "text-gray-700" : "text-gray-300"}`}>
+                            {pred ? pred.pred_away : "–"}
+                          </td>
+
+                          {/* Match points */}
+                          <td className="text-center px-2 py-2">
+                            {pts !== null ? (
+                              <span className={`text-xs font-black px-1.5 py-0.5 rounded ${ptsBg(pts, selectedMatch?.status ?? "")}`}>
+                                {pts}
+                              </span>
+                            ) : (
+                              <span className="text-gray-300 text-xs">–</span>
+                            )}
+                          </td>
+
+                          {/* Acum (total points) */}
+                          <td className="text-center px-2 py-2">
+                            <span className={`text-xs font-black ${isMe ? "text-fifa-blue" : "text-gray-700"}`}>
+                              {player.total_points}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Legend */}
+            <div className="flex flex-wrap gap-x-4 gap-y-1 px-4 py-2.5 border-t border-gray-100 bg-gray-50">
+              <span className="flex items-center gap-1 text-[10px] text-yellow-700"><span className="w-2 h-2 rounded-full bg-yellow-300 inline-block" />Exacto (6)</span>
+              <span className="flex items-center gap-1 text-[10px] text-blue-700"><span className="w-2 h-2 rounded-full bg-blue-200 inline-block" />Resultado (3–4)</span>
+              <span className="flex items-center gap-1 text-[10px] text-red-400"><span className="w-2 h-2 rounded-full bg-red-200 inline-block" />Fallo (0–1)</span>
+              {isLive && <span className="text-[10px] text-green-600 font-semibold">🟢 Puntos en vivo</span>}
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
