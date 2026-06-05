@@ -615,11 +615,11 @@ export default function PredictionsPage() {
         </div>
       )}
       {!locked && (
-        <div className="sticky bottom-20 md:bottom-4 flex justify-center gap-3 mt-8 flex-wrap">
+        <div className="fixed bottom-20 md:bottom-4 left-0 right-0 flex justify-center gap-3 z-40 pointer-events-none">
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-5 py-3.5 bg-white text-gray-700 font-bold rounded-2xl text-sm shadow-lg hover:bg-gray-50 transition-colors disabled:opacity-50 border border-gray-200"
+            className="pointer-events-auto px-5 py-3.5 bg-white text-gray-700 font-bold rounded-2xl text-sm shadow-lg hover:bg-gray-50 transition-colors disabled:opacity-50 border border-gray-200"
           >
             {saving ? "Guardando..." : `Guardar (${completedCount}/${matches.length})`}
           </button>
@@ -628,23 +628,10 @@ export default function PredictionsPage() {
             onClick={handleSubmit}
             disabled={saving || completedCount < matches.length || paid === false || hasAvatar === false}
             title={hasAvatar === false ? "Debes añadir una foto primero" : paid === false ? "Debes pagar antes de enviar" : undefined}
-            className="px-8 py-3.5 bg-fifa-gold text-gray-900 font-black rounded-2xl text-sm shadow-lg hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            className="pointer-events-auto px-8 py-3.5 bg-fifa-gold text-gray-900 font-black rounded-2xl text-sm shadow-lg hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {saved ? "✓ Enviado" : hasAvatar === false ? "Falta tu foto" : paid === false ? "Pago pendiente" : "Enviar quiniela"}
           </button>
-
-        </div>
-      )}
-
-      {locked && (
-        <div className="flex justify-center mt-6">
-          <a
-            href="/predictions/print"
-            target="_blank"
-            className="flex items-center gap-2 px-5 py-3.5 bg-white text-gray-700 font-bold rounded-2xl text-sm shadow-lg hover:bg-gray-50 transition-colors border border-gray-200"
-          >
-            📄 Descargar PDF
-          </a>
         </div>
       )}
     </div>
