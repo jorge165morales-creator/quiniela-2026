@@ -86,15 +86,20 @@ export default function AdminDashboard() {
     const usersRes = await fetch(`/api/admin/user?secret=${encodeURIComponent(s ?? "")}`);
     if (usersRes.ok) setUsers(await usersRes.json());
 
-    const [{ data: playerData }, { data: predData }] = await Promise.all([
-      supabase.from("players").select("id, name, paid, league_id, user_id, leagues(name)").order("name"),
-      supabase.from("predictions").select("player_id"),
-    ]);
+    const { data: playerData } = await supabase
+      .from("players")
+      .select("id, name, paid, league_id, user_id, leagues(name)")
+      .order("name");
     if (playerData) setPlayers(playerData as unknown as PlayerRow[]);
-    if (predData) {
-      const counts: Record<string, number> = {};
-      for (const p of predData) counts[p.player_id] = (counts[p.player_id] ?? 0) + 1;
-      setSubmittedPlayerIds(new Set(Object.keys(counts).filter((id) => counts[id] >= 72)));
+
+    if (leagueData && leagueData.length > 0) {
+      const submittedResults = await Promise.all(
+        leagueData.map((league) =>
+          fetch(`/api/leaderboard?league_id=${league.id}`).then((r) => r.json())
+        )
+      );
+      const allIds = submittedResults.flatMap((r) => (r.submitted ?? []) as string[]);
+      setSubmittedPlayerIds(new Set(allIds));
     }
 
     if (matchData) {
