@@ -298,8 +298,8 @@ export default function LeaderboardPage() {
 
   const sectionConfig = {
     green:  { border: "border-l-green-500",  label: "La Realeza",      labelCls: "text-green-600",  lineCls: "bg-green-200" },
-    yellow: { border: "border-l-yellow-400", label: "Zona Media Alta",  labelCls: "text-yellow-600", lineCls: "bg-yellow-200" },
-    orange: { border: "border-l-orange-400", label: "Zona Media Baja",  labelCls: "text-orange-500", lineCls: "bg-orange-200" },
+    yellow: { border: "border-l-yellow-400", label: "Ya Casi",          labelCls: "text-yellow-600", lineCls: "bg-yellow-200" },
+    orange: { border: "border-l-orange-400", label: "Buen Chapín",      labelCls: "text-orange-500", lineCls: "bg-orange-200" },
     red:    { border: "border-l-red-500",    label: "🔥 LA FAVELA ⚡",  labelCls: "text-red-500",    lineCls: "bg-red-200" },
   };
 
