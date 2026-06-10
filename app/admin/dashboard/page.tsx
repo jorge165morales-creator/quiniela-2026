@@ -32,6 +32,7 @@ type PlayerRow = {
   name: string;
   paid: boolean;
   league_id: string;
+  user_id: string | null;
   leagues: { name: string } | null;
 };
 
@@ -53,6 +54,8 @@ export default function AdminDashboard() {
   const [resetPassword, setResetPassword] = useState("");
   const [resetMsg, setResetMsg] = useState<{ type: "ok" | "error"; text: string } | null>(null);
   const [resetting, setResetting] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<{ type: "ok" | "error"; text: string } | null>(null);
 
@@ -84,7 +87,7 @@ export default function AdminDashboard() {
 
     const { data: playerData } = await supabase
       .from("players")
-      .select("id, name, paid, league_id, leagues(name)")
+      .select("id, name, paid, league_id, user_id, leagues(name)")
       .order("name");
     if (playerData) setPlayers(playerData as unknown as PlayerRow[]);
 
@@ -194,6 +197,30 @@ export default function AdminDashboard() {
     if (!matchPredictions[matchId]) {
       await loadPredictions(matchId);
     }
+  }
+
+  async function handleDeleteUser(userId: string) {
+    setDeletingUserId(userId);
+    const res = await fetch("/api/admin/user", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ secret, user_id: userId }),
+    });
+    if (res.ok) {
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
+      setPlayers((prev) => prev.filter((p) => {
+        // Also remove from players view (matched by user_id not available in PlayerRow, so reload)
+        return true;
+      }));
+      // Reload players to reflect deletion
+      const { data: playerData } = await supabase
+        .from("players")
+        .select("id, name, paid, league_id, user_id, leagues(name)")
+        .order("name");
+      if (playerData) setPlayers(playerData as unknown as PlayerRow[]);
+    }
+    setDeletingUserId(null);
+    setConfirmDeleteId(null);
   }
 
   async function handleResetPassword() {
@@ -389,25 +416,49 @@ export default function AdminDashboard() {
         </h2>
         <div className="flex flex-col gap-2">
           {players.map((player) => (
-            <div key={player.id} className="bg-gray-900 rounded-xl px-5 py-3 flex items-center justify-between">
-              <div>
-                <p className="font-semibold">{player.name}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{player.leagues?.name ?? "—"}</p>
+            <div key={player.id} className="bg-gray-900 rounded-xl px-5 py-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold">{player.name}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{player.leagues?.name ?? "—"}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`text-xs font-medium px-3 py-1 rounded-full ${
+                    player.paid ? "bg-green-950 text-green-300" : "bg-red-950 text-red-300"
+                  }`}>
+                    {player.paid ? "Pagado" : "Pendiente"}
+                  </span>
+                  <button
+                    onClick={() => togglePaid(player)}
+                    disabled={togglingPaid === player.id}
+                    className="text-sm text-fifa-gold hover:underline disabled:opacity-40"
+                  >
+                    {togglingPaid === player.id ? "..." : player.paid ? "Marcar pendiente" : "Marcar pagado"}
+                  </button>
+                  {player.user_id && (
+                    <button
+                      onClick={() => setConfirmDeleteId(confirmDeleteId === player.user_id ? null : player.user_id)}
+                      className="text-sm text-red-400 hover:text-red-300"
+                    >
+                      {confirmDeleteId === player.user_id ? "Cancelar" : "Eliminar"}
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className={`text-xs font-medium px-3 py-1 rounded-full ${
-                  player.paid ? "bg-green-950 text-green-300" : "bg-red-950 text-red-300"
-                }`}>
-                  {player.paid ? "Pagado" : "Pendiente"}
-                </span>
-                <button
-                  onClick={() => togglePaid(player)}
-                  disabled={togglingPaid === player.id}
-                  className="text-sm text-fifa-gold hover:underline disabled:opacity-40"
-                >
-                  {togglingPaid === player.id ? "..." : player.paid ? "Marcar pendiente" : "Marcar pagado"}
-                </button>
-              </div>
+              {confirmDeleteId === player.user_id && (
+                <div className="mt-3 flex items-center gap-3 bg-red-950 border border-red-700 rounded-xl px-4 py-3">
+                  <p className="text-red-300 text-sm flex-1">
+                    ¿Eliminar a <strong>{player.name}</strong> y todas sus predicciones?
+                  </p>
+                  <button
+                    onClick={() => handleDeleteUser(player.user_id!)}
+                    disabled={deletingUserId === player.user_id}
+                    className="px-4 py-2 bg-red-600 text-white font-bold rounded-lg text-sm hover:bg-red-500 transition-colors disabled:opacity-40"
+                  >
+                    {deletingUserId === player.user_id ? "..." : "Sí, eliminar"}
+                  </button>
+                </div>
+              )}
             </div>
           ))}
           {players.length === 0 && (

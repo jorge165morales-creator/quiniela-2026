@@ -40,3 +40,38 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: "Error al actualizar contraseña." }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
+
+export async function DELETE(req: NextRequest) {
+  const { secret, user_id } = await req.json();
+
+  if (secret !== process.env.ADMIN_SECRET) {
+    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  }
+
+  if (!user_id) {
+    return NextResponse.json({ error: "Datos inválidos." }, { status: 400 });
+  }
+
+  const supabase = createServiceClient();
+
+  // Delete players first (cascades to predictions)
+  const { error: playerError } = await supabase
+    .from("players")
+    .delete()
+    .eq("user_id", user_id);
+
+  if (playerError) {
+    return NextResponse.json({ error: "Error al eliminar jugador." }, { status: 500 });
+  }
+
+  const { error: userError } = await supabase
+    .from("users")
+    .delete()
+    .eq("id", user_id);
+
+  if (userError) {
+    return NextResponse.json({ error: "Error al eliminar usuario." }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
+}
