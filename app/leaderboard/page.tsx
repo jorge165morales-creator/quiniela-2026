@@ -65,22 +65,20 @@ export default function LeaderboardPage() {
     if (!leagueId) return;
 
     async function load() {
-      // Use server-side API to get submitted player IDs — avoids client RLS and row-limit issues.
-      const [{ data: allPlayers }, { data: leaderboardData }, submittedRes] = await Promise.all([
+      // Query paid players directly (same pattern as ultimo-cero) + leaderboard points
+      const [{ data: playerData }, { data: leaderboardData }] = await Promise.all([
         supabase
           .from("players")
-          .select("id, name, paid")
-          .eq("league_id", leagueId!),
+          .select("id, name")
+          .eq("league_id", leagueId!)
+          .eq("paid", true),
         supabase
           .from("leaderboard")
           .select("*")
           .eq("league_id", leagueId!)
           .order("total_points", { ascending: false })
           .order("exact_scores", { ascending: false }),
-        fetch(`/api/leaderboard?league_id=${leagueId}`).then((r) => r.json()),
       ]);
-
-      const submittedSet = new Set<string>((submittedRes?.submitted ?? []) as string[]);
 
       // Build a lookup from the leaderboard view for points data
       const leaderboardMap: Record<string, LeaderboardEntry> = {};
@@ -88,10 +86,8 @@ export default function LeaderboardPage() {
         leaderboardMap[e.player_id] = e;
       }
 
-      const submittedPlayers = (allPlayers ?? []).filter((p) => submittedSet.has(p.id));
-
-      // Build ranked entries: join submitted players with their leaderboard points
-      const rankedEntries = submittedPlayers
+      // All paid players ranked by points
+      const rankedEntries = (playerData ?? [])
         .map((p) => leaderboardMap[p.id] ?? ({
           player_id: p.id,
           player_name: p.name,
@@ -105,22 +101,6 @@ export default function LeaderboardPage() {
       const newRanks: Record<string, number> = {};
       rankedEntries.forEach((e, i) => { newRanks[e.player_id] = i + 1; });
 
-      // Paid players who haven't submitted their full bracket yet
-      const submittedIds = new Set(rankedEntries.map((e) => e.player_id));
-      const unsubmitted: EntryWithDelta[] = (allPlayers ?? [])
-        .filter((p) => p.paid && !submittedIds.has(p.id))
-        .map((p) => ({
-          player_id: p.id,
-          player_name: p.name,
-          total_points: 0,
-          exact_scores: 0,
-          correct_results: 0,
-          predictions_count: 0,
-          league_id: leagueId!,
-          delta: null,
-          not_submitted: true,
-        }));
-
       const stored = localStorage.getItem("leaderboard_prev_ranks");
       const savedRanks: Record<string, number> = stored ? JSON.parse(stored) : prevRanks.current;
 
@@ -133,7 +113,7 @@ export default function LeaderboardPage() {
 
       localStorage.setItem("leaderboard_prev_ranks", JSON.stringify(newRanks));
       prevRanks.current = newRanks;
-      setEntries([...withDelta, ...unsubmitted]);
+      setEntries(withDelta);
       setLastUpdated(new Date());
 
       // Único 6: matches where exactly 1 player in this league scored 6 pts
