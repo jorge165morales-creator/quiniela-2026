@@ -65,33 +65,31 @@ export default function LeaderboardPage() {
     if (!leagueId) return;
 
     async function load() {
-      const [{ data }, { data: paidPlayers }] = await Promise.all([
+      // Query all league players (regardless of paid status) + leaderboard points in parallel.
+      // Using players table directly avoids relying on the leaderboard view to enumerate who
+      // is in the league — the view's LEFT JOIN can miss players under certain edge cases.
+      const [{ data: allPlayers }, { data: leaderboardData }] = await Promise.all([
+        supabase
+          .from("players")
+          .select("id, name, paid")
+          .eq("league_id", leagueId!),
         supabase
           .from("leaderboard")
           .select("*")
           .eq("league_id", leagueId!)
           .order("total_points", { ascending: false })
           .order("exact_scores", { ascending: false }),
-        supabase
-          .from("players")
-          .select("id, name")
-          .eq("league_id", leagueId!)
-          .eq("paid", true),
       ]);
 
-      // Collect all player IDs for this league, then fetch their prediction counts.
-      // We filter by player IDs and set a high limit to avoid Supabase's 1000-row default
-      // truncation (e.g. 20 players × 72 predictions = 1440 rows would be cut off).
-      const leaguePlayerIds = Array.from(new Set([
-        ...((data as LeaderboardEntry[]) ?? []).map((e) => e.player_id),
-        ...(paidPlayers ?? []).map((p) => p.id),
-      ]));
+      const allPlayerIds = (allPlayers ?? []).map((p) => p.id);
 
-      const { data: allPreds } = leaguePlayerIds.length > 0
+      // Count raw prediction rows per player. High limit avoids Supabase's 1000-row default
+      // truncation (e.g. 20 players × 72 = 1440 rows would be silently cut off).
+      const { data: allPreds } = allPlayerIds.length > 0
         ? await supabase
             .from("predictions")
             .select("player_id")
-            .in("player_id", leaguePlayerIds)
+            .in("player_id", allPlayerIds)
             .limit(5000)
         : { data: [] };
 
@@ -100,45 +98,64 @@ export default function LeaderboardPage() {
         predCountMap[p.player_id] = (predCountMap[p.player_id] ?? 0) + 1;
       }
 
-      if (data) {
-        const newEntries = (data as LeaderboardEntry[]).filter((e) => (predCountMap[e.player_id] ?? 0) >= 72);
-        const newRanks: Record<string, number> = {};
-        newEntries.forEach((e, i) => { newRanks[e.player_id] = i + 1; });
+      // Build a lookup from the leaderboard view for points data
+      const leaderboardMap: Record<string, LeaderboardEntry> = {};
+      for (const e of ((leaderboardData as LeaderboardEntry[]) ?? [])) {
+        leaderboardMap[e.player_id] = e;
+      }
 
-        // Paid players who haven't submitted their full bracket yet
-        const submittedIds = new Set(newEntries.map((e) => e.player_id));
-        const unsubmitted: EntryWithDelta[] = (paidPlayers ?? [])
-          .filter((p) => !submittedIds.has(p.id))
-          .map((p) => ({
-            player_id: p.id,
-            player_name: p.name,
-            total_points: 0,
-            exact_scores: 0,
-            correct_results: 0,
-            predictions_count: 0,
-            league_id: leagueId!,
-            delta: null,
-            not_submitted: true,
-          }));
+      const submittedPlayers = (allPlayers ?? []).filter((p) => (predCountMap[p.id] ?? 0) >= 72);
 
-        const stored = localStorage.getItem("leaderboard_prev_ranks");
-        const savedRanks: Record<string, number> = stored ? JSON.parse(stored) : prevRanks.current;
+      // Build ranked entries: join submitted players with their leaderboard points
+      const rankedEntries = submittedPlayers
+        .map((p) => leaderboardMap[p.id] ?? ({
+          player_id: p.id,
+          player_name: p.name,
+          league_id: leagueId!,
+          total_points: 0,
+          exact_scores: 0,
+          correct_results: 0,
+          predictions_count: 0,
+        } as LeaderboardEntry))
+        .sort((a, b) => b.total_points - a.total_points || b.exact_scores - a.exact_scores);
 
-        const withDelta: EntryWithDelta[] = newEntries.map((e, i) => {
-          const oldRank = savedRanks[e.player_id];
-          const newRank = i + 1;
-          const delta = oldRank != null ? oldRank - newRank : null;
-          return { ...e, delta };
-        });
+      const newRanks: Record<string, number> = {};
+      rankedEntries.forEach((e, i) => { newRanks[e.player_id] = i + 1; });
 
-        localStorage.setItem("leaderboard_prev_ranks", JSON.stringify(newRanks));
-        prevRanks.current = newRanks;
-        setEntries([...withDelta, ...unsubmitted]);
-        setLastUpdated(new Date());
+      // Paid players who haven't submitted their full bracket yet
+      const submittedIds = new Set(rankedEntries.map((e) => e.player_id));
+      const unsubmitted: EntryWithDelta[] = (allPlayers ?? [])
+        .filter((p) => p.paid && !submittedIds.has(p.id))
+        .map((p) => ({
+          player_id: p.id,
+          player_name: p.name,
+          total_points: 0,
+          exact_scores: 0,
+          correct_results: 0,
+          predictions_count: 0,
+          league_id: leagueId!,
+          delta: null,
+          not_submitted: true,
+        }));
 
-        // Único 6: matches where exactly 1 player in this league scored 6 pts
-        const playerIds = newEntries.map((e) => e.player_id);
-        if (playerIds.length > 0) {
+      const stored = localStorage.getItem("leaderboard_prev_ranks");
+      const savedRanks: Record<string, number> = stored ? JSON.parse(stored) : prevRanks.current;
+
+      const withDelta: EntryWithDelta[] = rankedEntries.map((e, i) => {
+        const oldRank = savedRanks[e.player_id];
+        const newRank = i + 1;
+        const delta = oldRank != null ? oldRank - newRank : null;
+        return { ...e, delta };
+      });
+
+      localStorage.setItem("leaderboard_prev_ranks", JSON.stringify(newRanks));
+      prevRanks.current = newRanks;
+      setEntries([...withDelta, ...unsubmitted]);
+      setLastUpdated(new Date());
+
+      // Único 6: matches where exactly 1 player in this league scored 6 pts
+      const playerIds = rankedEntries.map((e) => e.player_id);
+      if (playerIds.length > 0) {
           const { data: sixPreds } = await supabase
             .from("predictions")
             .select("player_id, match_id, matches(home_team, away_team, group, matchday, home_score, away_score, status)")
@@ -158,7 +175,7 @@ export default function LeaderboardPage() {
             for (const [, preds] of Object.entries(byMatch)) {
               if (preds.length === 1) {
                 const p = preds[0];
-                const entry = newEntries.find((e) => e.player_id === p.player_id);
+                const entry = rankedEntries.find((e) => e.player_id === p.player_id);
                 winners.push({
                   player_id: p.player_id,
                   player_name: entry?.player_name ?? "?",
@@ -174,7 +191,6 @@ export default function LeaderboardPage() {
             setUnicoSeis(winners);
           }
         }
-      }
       setLoading(false);
     }
 
