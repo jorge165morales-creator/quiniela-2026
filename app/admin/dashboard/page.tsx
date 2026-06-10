@@ -56,6 +56,7 @@ export default function AdminDashboard() {
   const [resetting, setResetting] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [submittedPlayerIds, setSubmittedPlayerIds] = useState<Set<string>>(new Set());
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState<{ type: "ok" | "error"; text: string } | null>(null);
 
@@ -85,11 +86,16 @@ export default function AdminDashboard() {
     const usersRes = await fetch(`/api/admin/user?secret=${encodeURIComponent(s ?? "")}`);
     if (usersRes.ok) setUsers(await usersRes.json());
 
-    const { data: playerData } = await supabase
-      .from("players")
-      .select("id, name, paid, league_id, user_id, leagues(name)")
-      .order("name");
+    const [{ data: playerData }, { data: predData }] = await Promise.all([
+      supabase.from("players").select("id, name, paid, league_id, user_id, leagues(name)").order("name"),
+      supabase.from("predictions").select("player_id"),
+    ]);
     if (playerData) setPlayers(playerData as unknown as PlayerRow[]);
+    if (predData) {
+      const counts: Record<string, number> = {};
+      for (const p of predData) counts[p.player_id] = (counts[p.player_id] ?? 0) + 1;
+      setSubmittedPlayerIds(new Set(Object.keys(counts).filter((id) => counts[id] >= 72)));
+    }
 
     if (matchData) {
       setMatches(
@@ -218,6 +224,7 @@ export default function AdminDashboard() {
         .select("id, name, paid, league_id, user_id, leagues(name)")
         .order("name");
       if (playerData) setPlayers(playerData as unknown as PlayerRow[]);
+      setSubmittedPlayerIds((prev) => { const next = new Set(prev); next.delete(userId); return next; });
     }
     setDeletingUserId(null);
     setConfirmDeleteId(null);
@@ -418,9 +425,14 @@ export default function AdminDashboard() {
           {players.map((player) => (
             <div key={player.id} className="bg-gray-900 rounded-xl px-5 py-3">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-semibold">{player.name}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{player.leagues?.name ?? "—"}</p>
+                <div className="flex items-center gap-2">
+                  <div>
+                    <p className="font-semibold">{player.name}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{player.leagues?.name ?? "—"}</p>
+                  </div>
+                  {submittedPlayerIds.has(player.id) && (
+                    <span title="Quiniela enviada" className="text-green-400 text-base leading-none">✓</span>
+                  )}
                 </div>
                 <div className="flex items-center gap-3">
                   <span className={`text-xs font-medium px-3 py-1 rounded-full ${
