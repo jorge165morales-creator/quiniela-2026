@@ -10,11 +10,11 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServiceClient();
 
-  // Find league by invite code
+  // Find league by invite code (case-insensitive)
   const { data: league, error: leagueError } = await supabase
     .from("leagues")
     .select("id, name, predictions_locked")
-    .eq("invite_code", invite_code)
+    .ilike("invite_code", invite_code)
     .single();
 
   if (leagueError || !league) {
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Usuario no encontrado." }, { status: 404 });
   }
 
-  // Check if already in league
+  // Check if already in league by user_id
   const { data: existingPlayer } = await supabase
     .from("players")
     .select("id")
@@ -43,6 +43,31 @@ export async function POST(req: NextRequest) {
   if (existingPlayer) {
     return NextResponse.json({
       player_id: existingPlayer.id,
+      player_name: user.name,
+      username: user.username,
+      league_id: league.id,
+      league_name: league.name,
+      predictions_locked: league.predictions_locked,
+    });
+  }
+
+  // Check if a player with same name exists (manually added or from a previous account)
+  // — link this user account to that player instead of inserting a new row
+  const { data: namedPlayer } = await supabase
+    .from("players")
+    .select("id")
+    .eq("league_id", league.id)
+    .eq("name", user.name)
+    .single();
+
+  if (namedPlayer) {
+    await supabase
+      .from("players")
+      .update({ user_id: user.id })
+      .eq("id", namedPlayer.id);
+
+    return NextResponse.json({
+      player_id: namedPlayer.id,
       player_name: user.name,
       username: user.username,
       league_id: league.id,
