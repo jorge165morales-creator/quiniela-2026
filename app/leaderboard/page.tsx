@@ -65,37 +65,29 @@ export default function LeaderboardPage() {
     if (!leagueId) return;
 
     async function load() {
-      // Query paid players directly (same pattern as ultimo-cero) + leaderboard points
-      const [{ data: playerData }, { data: leaderboardData }] = await Promise.all([
-        supabase
-          .from("players")
-          .select("id, name")
-          .eq("league_id", leagueId!)
-          .eq("paid", true),
+      // Get submitted player IDs via server (SQL GROUP BY — no row limit)
+      // + leaderboard view for points (one row per player, no limit issues)
+      const [{ data: leaderboardData }, submittedRes] = await Promise.all([
         supabase
           .from("leaderboard")
           .select("*")
           .eq("league_id", leagueId!)
           .order("total_points", { ascending: false })
           .order("exact_scores", { ascending: false }),
+        fetch(`/api/leaderboard?league_id=${leagueId}`).then((r) => r.json()),
       ]);
 
-      // Build a lookup from the leaderboard view for points data
+      const submittedSet = new Set<string>((submittedRes?.submitted ?? []) as string[]);
+
       const leaderboardMap: Record<string, LeaderboardEntry> = {};
       for (const e of ((leaderboardData as LeaderboardEntry[]) ?? [])) {
         leaderboardMap[e.player_id] = e;
       }
 
-      // All paid players ranked by points
-      const rankedEntries = (playerData ?? [])
-        .map((p) => leaderboardMap[p.id] ?? ({
-          player_id: p.id,
-          player_name: p.name,
-          total_points: 0,
-          exact_scores: 0,
-          correct_results: 0,
-          predictions_count: 0,
-        } as LeaderboardEntry))
+      // All players who submitted 72 predictions, ranked by points
+      const rankedEntries = Array.from(submittedSet)
+        .map((id) => leaderboardMap[id] ?? null)
+        .filter((e): e is LeaderboardEntry => e !== null)
         .sort((a, b) => b.total_points - a.total_points || b.exact_scores - a.exact_scores);
 
       const newRanks: Record<string, number> = {};

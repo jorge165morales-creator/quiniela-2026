@@ -15,39 +15,17 @@ export async function GET(req: NextRequest) {
 
   const supabase = createServiceClient();
 
-  // Get all players in this league
-  const { data: players, error: playersError } = await supabase
-    .from("players")
-    .select("id")
-    .eq("league_id", league_id);
+  // Use SQL GROUP BY to count per player — avoids PostgREST row-limit entirely
+  const { data: submitted, error: rpcError } = await supabase.rpc("get_submitted_players", {
+    p_league_id: league_id,
+  });
 
-  if (playersError || !players) {
-    return NextResponse.json({ error: "Error al obtener jugadores." }, { status: 500 });
-  }
-
-  const playerIds = players.map((p) => p.id);
-  if (playerIds.length === 0) {
-    return NextResponse.json({ submitted: [] });
-  }
-
-  // Fetch with explicit high limit to avoid PostgREST default 1000-row cap
-  const { data: preds, error: predsError } = await supabase
-    .from("predictions")
-    .select("player_id")
-    .in("player_id", playerIds)
-    .limit(100000);
-
-  if (predsError) {
+  if (rpcError) {
     return NextResponse.json({ error: "Error al contar predicciones." }, { status: 500 });
   }
 
-  const counts: Record<string, number> = {};
-  for (const p of preds ?? []) {
-    counts[p.player_id] = (counts[p.player_id] ?? 0) + 1;
-  }
-
-  const submitted = Object.keys(counts).filter((id) => counts[id] >= 72);
-  return NextResponse.json({ submitted });
+  const submittedIds = (submitted ?? []).map((r: { player_id: string }) => r.player_id);
+  return NextResponse.json({ submitted: submittedIds });
 }
 
 /**
