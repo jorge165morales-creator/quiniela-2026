@@ -65,7 +65,7 @@ export default function LeaderboardPage() {
     if (!leagueId) return;
 
     async function load() {
-      const [{ data }, { data: paidPlayers }, { data: allPreds }] = await Promise.all([
+      const [{ data }, { data: paidPlayers }] = await Promise.all([
         supabase
           .from("leaderboard")
           .select("*")
@@ -77,12 +77,24 @@ export default function LeaderboardPage() {
           .select("id, name")
           .eq("league_id", leagueId!)
           .eq("paid", true),
-        supabase
-          .from("predictions")
-          .select("player_id"),
       ]);
 
-      // Count actual predictions per player (not just scored ones)
+      // Collect all player IDs for this league, then fetch their prediction counts.
+      // We filter by player IDs and set a high limit to avoid Supabase's 1000-row default
+      // truncation (e.g. 20 players × 72 predictions = 1440 rows would be cut off).
+      const leaguePlayerIds = Array.from(new Set([
+        ...((data as LeaderboardEntry[]) ?? []).map((e) => e.player_id),
+        ...(paidPlayers ?? []).map((p) => p.id),
+      ]));
+
+      const { data: allPreds } = leaguePlayerIds.length > 0
+        ? await supabase
+            .from("predictions")
+            .select("player_id")
+            .in("player_id", leaguePlayerIds)
+            .limit(5000)
+        : { data: [] };
+
       const predCountMap: Record<string, number> = {};
       for (const p of (allPreds ?? [])) {
         predCountMap[p.player_id] = (predCountMap[p.player_id] ?? 0) + 1;
