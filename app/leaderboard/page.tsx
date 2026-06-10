@@ -65,7 +65,7 @@ export default function LeaderboardPage() {
     if (!leagueId) return;
 
     async function load() {
-      const [{ data }, { data: paidPlayers }] = await Promise.all([
+      const [{ data }, { data: paidPlayers }, { data: allPreds }] = await Promise.all([
         supabase
           .from("leaderboard")
           .select("*")
@@ -77,10 +77,19 @@ export default function LeaderboardPage() {
           .select("id, name")
           .eq("league_id", leagueId!)
           .eq("paid", true),
+        supabase
+          .from("predictions")
+          .select("player_id"),
       ]);
 
+      // Count actual predictions per player (not just scored ones)
+      const predCountMap: Record<string, number> = {};
+      for (const p of (allPreds ?? [])) {
+        predCountMap[p.player_id] = (predCountMap[p.player_id] ?? 0) + 1;
+      }
+
       if (data) {
-        const newEntries = (data as LeaderboardEntry[]).filter((e) => e.predictions_count >= 72);
+        const newEntries = (data as LeaderboardEntry[]).filter((e) => (predCountMap[e.player_id] ?? 0) >= 72);
         const newRanks: Record<string, number> = {};
         newEntries.forEach((e, i) => { newRanks[e.player_id] = i + 1; });
 
@@ -291,6 +300,25 @@ export default function LeaderboardPage() {
     );
   }
 
+  const submittedCount = entries.filter((e) => !e.not_submitted).length;
+  const q1 = Math.ceil(submittedCount / 4);
+  const q2 = Math.ceil(submittedCount / 2);
+  const q3 = Math.ceil((3 * submittedCount) / 4);
+
+  function getSection(rank: number): "green" | "yellow" | "orange" | "red" {
+    if (rank <= q1) return "green";
+    if (rank <= q2) return "yellow";
+    if (rank <= q3) return "orange";
+    return "red";
+  }
+
+  const sectionConfig = {
+    green:  { border: "border-l-green-500",  label: "Zona Alta",       labelCls: "text-green-600",  lineCls: "bg-green-200" },
+    yellow: { border: "border-l-yellow-400", label: "Zona Media Alta",  labelCls: "text-yellow-600", lineCls: "bg-yellow-200" },
+    orange: { border: "border-l-orange-400", label: "Zona Media Baja",  labelCls: "text-orange-500", lineCls: "bg-orange-200" },
+    red:    { border: "border-l-red-500",    label: "Zona de Peligro",  labelCls: "text-red-500",    lineCls: "bg-red-200" },
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[50vh]">
@@ -337,6 +365,10 @@ export default function LeaderboardPage() {
             const isExpanded = expandedPlayer === entry.player_id;
             const preds = playerPredictions[entry.player_id];
 
+            const section = rank ? getSection(rank) : null;
+            const cfg = section ? sectionConfig[section] : null;
+            const isFirstOfSection = rank === 1 || rank === q1 + 1 || rank === q2 + 1 || rank === q3 + 1;
+
             const byGroup: Record<string, PlayerPrediction[]> = {};
             if (preds) {
               for (const p of preds) {
@@ -370,8 +402,17 @@ export default function LeaderboardPage() {
             }
 
             return (
-              <div key={entry.player_id} className={`rounded-2xl overflow-hidden border shadow-sm ${
-                isMe ? "border-fifa-gold/50" : "border-gray-200"
+              <div key={entry.player_id}>
+                {isFirstOfSection && cfg && (
+                  <div className={`flex items-center gap-2 mt-3 mb-1 px-1`}>
+                    <div className={`h-px flex-1 ${cfg.lineCls}`} />
+                    <span className={`text-xs font-bold uppercase tracking-wider ${cfg.labelCls}`}>{cfg.label}</span>
+                    <div className={`h-px flex-1 ${cfg.lineCls}`} />
+                  </div>
+                )}
+              <div className={`rounded-2xl overflow-hidden border-y border-r border-l-4 shadow-sm ${
+                cfg ? cfg.border : "border-l-gray-200"
+              } ${isMe ? "border-y-fifa-gold/50 border-r-fifa-gold/50" : "border-y-gray-200 border-r-gray-200"
               } bg-white`}>
                 {/* Player row */}
                 <div
@@ -399,9 +440,9 @@ export default function LeaderboardPage() {
                         {isMe && <span className="text-xs text-gray-400 font-normal ml-1">(tú)</span>}
                       </span>
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-xs text-gray-400">{entry.exact_scores} exactos</span>
+                        <span className="text-xs text-green-500 font-semibold">✓ Quiniela enviada</span>
                         <span className="text-gray-300">·</span>
-                        <span className="text-xs text-gray-400">{entry.correct_results} acertados</span>
+                        <span className="text-xs text-gray-400">{entry.exact_scores} exactos</span>
                         <DeltaBadge delta={entry.delta} />
                       </div>
                     </div>
@@ -488,6 +529,7 @@ export default function LeaderboardPage() {
                     )}
                   </div>
                 )}
+              </div>
               </div>
             );
           })}
