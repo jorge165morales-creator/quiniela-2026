@@ -127,10 +127,11 @@ All tables have RLS enabled with public read. Admin operations are protected by 
 - Admin dashboard also has a "Sync Scores" button that calls `/api/admin/live-score` manually
 
 **Leaderboard extras:**
-- Only shows players who have submitted their full bracket (72 predictions)
+- Only shows players who have submitted their full bracket (72 predictions) AND are marked as paid
 - Expandable rows: click a player to see their full prediction grid with flags
 - Único 6 tracker: shows matches where only one player predicted the exact score
 - Other players' predictions hidden until the league is locked
+- Zone labels (top → bottom): **La Realeza** (green) · **Ya Casi** (yellow) · **Buen Chapín** (orange) · **🔥 LA FAVELA ⚡** (red)
 
 ## Special Prize Tabs
 
