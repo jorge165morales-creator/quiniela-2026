@@ -3,6 +3,53 @@ import { createServiceClient } from "@/lib/supabase";
 import { calculatePoints } from "@/lib/scoring";
 
 /**
+ * GET /api/leaderboard?league_id=...
+ * Returns player IDs that have >= 72 predictions (i.e. have submitted their full bracket).
+ * Uses service role key to bypass RLS and avoid client-side row-count limits.
+ */
+export async function GET(req: NextRequest) {
+  const league_id = req.nextUrl.searchParams.get("league_id");
+  if (!league_id) {
+    return NextResponse.json({ error: "league_id requerido." }, { status: 400 });
+  }
+
+  const supabase = createServiceClient();
+
+  // Get all players in this league
+  const { data: players, error: playersError } = await supabase
+    .from("players")
+    .select("id")
+    .eq("league_id", league_id);
+
+  if (playersError || !players) {
+    return NextResponse.json({ error: "Error al obtener jugadores." }, { status: 500 });
+  }
+
+  const playerIds = players.map((p) => p.id);
+  if (playerIds.length === 0) {
+    return NextResponse.json({ submitted: [] });
+  }
+
+  // Count predictions per player
+  const { data: preds, error: predsError } = await supabase
+    .from("predictions")
+    .select("player_id")
+    .in("player_id", playerIds);
+
+  if (predsError) {
+    return NextResponse.json({ error: "Error al contar predicciones." }, { status: 500 });
+  }
+
+  const counts: Record<string, number> = {};
+  for (const p of preds ?? []) {
+    counts[p.player_id] = (counts[p.player_id] ?? 0) + 1;
+  }
+
+  const submitted = Object.keys(counts).filter((id) => counts[id] >= 72);
+  return NextResponse.json({ submitted });
+}
+
+/**
  * POST /api/leaderboard/score
  * Admin route: score all predictions for a finished match.
  * Body: { match_id: string, admin_secret: string }

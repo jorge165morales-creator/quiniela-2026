@@ -65,10 +65,8 @@ export default function LeaderboardPage() {
     if (!leagueId) return;
 
     async function load() {
-      // Query all league players (regardless of paid status) + leaderboard points in parallel.
-      // Using players table directly avoids relying on the leaderboard view to enumerate who
-      // is in the league — the view's LEFT JOIN can miss players under certain edge cases.
-      const [{ data: allPlayers }, { data: leaderboardData }] = await Promise.all([
+      // Use server-side API to get submitted player IDs — avoids client RLS and row-limit issues.
+      const [{ data: allPlayers }, { data: leaderboardData }, submittedRes] = await Promise.all([
         supabase
           .from("players")
           .select("id, name, paid")
@@ -79,24 +77,10 @@ export default function LeaderboardPage() {
           .eq("league_id", leagueId!)
           .order("total_points", { ascending: false })
           .order("exact_scores", { ascending: false }),
+        fetch(`/api/leaderboard?league_id=${leagueId}`).then((r) => r.json()),
       ]);
 
-      const allPlayerIds = (allPlayers ?? []).map((p) => p.id);
-
-      // Count raw prediction rows per player. High limit avoids Supabase's 1000-row default
-      // truncation (e.g. 20 players × 72 = 1440 rows would be silently cut off).
-      const { data: allPreds } = allPlayerIds.length > 0
-        ? await supabase
-            .from("predictions")
-            .select("player_id")
-            .in("player_id", allPlayerIds)
-            .limit(5000)
-        : { data: [] };
-
-      const predCountMap: Record<string, number> = {};
-      for (const p of (allPreds ?? [])) {
-        predCountMap[p.player_id] = (predCountMap[p.player_id] ?? 0) + 1;
-      }
+      const submittedSet = new Set<string>((submittedRes?.submitted ?? []) as string[]);
 
       // Build a lookup from the leaderboard view for points data
       const leaderboardMap: Record<string, LeaderboardEntry> = {};
@@ -104,14 +88,13 @@ export default function LeaderboardPage() {
         leaderboardMap[e.player_id] = e;
       }
 
-      const submittedPlayers = (allPlayers ?? []).filter((p) => (predCountMap[p.id] ?? 0) >= 72);
+      const submittedPlayers = (allPlayers ?? []).filter((p) => submittedSet.has(p.id));
 
       // Build ranked entries: join submitted players with their leaderboard points
       const rankedEntries = submittedPlayers
         .map((p) => leaderboardMap[p.id] ?? ({
           player_id: p.id,
           player_name: p.name,
-          league_id: leagueId!,
           total_points: 0,
           exact_scores: 0,
           correct_results: 0,
