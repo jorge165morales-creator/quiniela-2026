@@ -30,11 +30,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ submitted: [] });
   }
 
-  // Count predictions per player
+  // Fetch with explicit high limit to avoid PostgREST default 1000-row cap
   const { data: preds, error: predsError } = await supabase
     .from("predictions")
     .select("player_id")
-    .in("player_id", playerIds);
+    .in("player_id", playerIds)
+    .limit(100000);
 
   if (predsError) {
     return NextResponse.json({ error: "Error al contar predicciones." }, { status: 500 });
