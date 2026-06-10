@@ -67,7 +67,7 @@ export default function LeaderboardPage() {
     async function load() {
       // Get submitted player IDs via server (SQL GROUP BY — no row limit)
       // + leaderboard view for points (one row per player, no limit issues)
-      const [{ data: leaderboardData }, submittedRes] = await Promise.all([
+      const [{ data: leaderboardData }, submittedRes, { data: paidPlayers }] = await Promise.all([
         supabase
           .from("leaderboard")
           .select("*")
@@ -75,9 +75,15 @@ export default function LeaderboardPage() {
           .order("total_points", { ascending: false })
           .order("exact_scores", { ascending: false }),
         fetch(`/api/leaderboard?league_id=${leagueId}`).then((r) => r.json()),
+        supabase.from("players").select("id").eq("league_id", leagueId!).eq("paid", true),
       ]);
 
       const submittedSet = new Set<string>((submittedRes?.submitted ?? []) as string[]);
+      const paidSet = new Set<string>((paidPlayers ?? []).map((p: { id: string }) => p.id));
+      // Only show players who both submitted 72 predictions AND have paid
+      for (const id of Array.from(submittedSet)) {
+        if (!paidSet.has(id)) submittedSet.delete(id);
+      }
 
       const leaderboardMap: Record<string, LeaderboardEntry> = {};
       for (const e of ((leaderboardData as LeaderboardEntry[]) ?? [])) {

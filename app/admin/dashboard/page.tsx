@@ -435,7 +435,7 @@ export default function AdminDashboard() {
                     <p className="font-semibold">{player.name}</p>
                     <p className="text-xs text-gray-500 mt-0.5">{player.leagues?.name ?? "—"}</p>
                   </div>
-                  {submittedPlayerIds.has(player.id) && (
+                  {submittedPlayerIds.has(player.id) && player.paid && (
                     <span title="Quiniela enviada" className="text-green-400 text-base leading-none">✓</span>
                   )}
                 </div>
