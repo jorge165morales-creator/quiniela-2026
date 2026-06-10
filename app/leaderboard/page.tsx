@@ -300,7 +300,7 @@ export default function LeaderboardPage() {
     green:  { border: "border-l-green-500",  label: "Zona Alta",       labelCls: "text-green-600",  lineCls: "bg-green-200" },
     yellow: { border: "border-l-yellow-400", label: "Zona Media Alta",  labelCls: "text-yellow-600", lineCls: "bg-yellow-200" },
     orange: { border: "border-l-orange-400", label: "Zona Media Baja",  labelCls: "text-orange-500", lineCls: "bg-orange-200" },
-    red:    { border: "border-l-red-500",    label: "Zona de Peligro",  labelCls: "text-red-500",    lineCls: "bg-red-200" },
+    red:    { border: "border-l-red-500",    label: "🔥 LA FAVELA ⚡",  labelCls: "text-red-500",    lineCls: "bg-red-200" },
   };
 
   if (loading) {
