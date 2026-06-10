@@ -92,7 +92,7 @@ function PrintContent() {
     const pred = preds[m.id];
     const hasPred = pred != null;
     return (
-      <div className="flex items-center px-2 py-1.5 border-b border-gray-100 last:border-0 text-[10px]">
+      <div className="flex items-center px-2 py-1 border-b border-gray-100 last:border-0 text-[10px]">
         <span className="flex-1 flex items-center justify-end gap-1 text-gray-700 font-medium truncate">
           <span className="truncate">{m.home_team}</span>
           {flagImg(m.home_team)}
@@ -111,17 +111,18 @@ function PrintContent() {
   return (
     <>
       <style>{`
+        @page { margin: 8mm; size: A4 portrait; }
         @media print {
           header, nav, .no-print { display: none !important; }
           body { background: white; }
         }
       `}</style>
 
-      <div className="max-w-4xl mx-auto px-4 py-4">
+      <div className="max-w-4xl mx-auto px-3 py-3">
         {/* Header */}
-        <div className="flex items-start justify-between mb-4 pb-3 border-b border-gray-200">
+        <div className="flex items-start justify-between mb-2 pb-2 border-b border-gray-200">
           <div>
-            <h1 className="text-xl font-black text-gray-900">Quiniela Mundial 2026</h1>
+            <h1 className="text-lg font-black text-gray-900">Quiniela Mundial 2026</h1>
             <p className="text-gray-500 text-xs mt-0.5">Fase de Grupos · {playerName}</p>
           </div>
           <div className="text-right text-xs text-gray-400 mt-0.5 shrink-0 ml-4">
@@ -131,7 +132,7 @@ function PrintContent() {
         </div>
 
         {/* Two-column flat list */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
             {col1.map((m) => <MatchRow key={m.id} m={m} />)}
           </div>
@@ -141,7 +142,7 @@ function PrintContent() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-[10px] text-gray-400 mt-4 pt-3 border-t border-gray-100">
+        <p className="text-center text-[10px] text-gray-400 mt-2 pt-2 border-t border-gray-100">
           Quiniela Mundial 2026 — amigos2026.vercel.app
         </p>
       </div>
