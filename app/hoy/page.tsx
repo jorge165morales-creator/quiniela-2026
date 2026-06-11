@@ -69,6 +69,7 @@ export default function HoyPage() {
   const [matches, setMatches] = useState<TodayMatch[]>([]);
   const [players, setPlayers] = useState<SubmittedPlayer[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isToday, setIsToday] = useState(true);
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -348,8 +349,14 @@ export default function HoyPage() {
                         ? "bg-blue-50"
                         : i % 2 === 0 ? "bg-white" : "bg-gray-50/60";
 
+                      const isExpanded = expandedPlayerId === player.player_id;
                       return (
-                        <tr key={player.player_id} className={`border-b border-gray-100 last:border-0 ${rowBg}`}>
+                        <>
+                        <tr
+                          key={player.player_id}
+                          onClick={() => setExpandedPlayerId(isExpanded ? null : player.player_id)}
+                          className={`border-b border-gray-100 last:border-0 cursor-pointer ${rowBg} ${isExpanded ? "border-b-0" : ""}`}
+                        >
                           {/* Pos */}
                           <td className="text-center px-2 py-2">
                             <span className={`text-xs font-black ${i === 0 ? "text-yellow-500" : i === 1 ? "text-gray-400" : i === 2 ? "text-orange-400" : "text-gray-400"}`}>
@@ -400,13 +407,59 @@ export default function HoyPage() {
                             )}
                           </td>
 
-                          {/* Acum (live total) */}
+                          {/* Acum + chevron */}
                           <td className="text-center px-2 py-2">
-                            <span className={`text-xs font-black ${isMe ? "text-fifa-blue" : "text-gray-700"}`}>
-                              {player.liveTotal}
-                            </span>
+                            <div className="flex items-center justify-center gap-1">
+                              <span className={`text-xs font-black ${isMe ? "text-fifa-blue" : "text-gray-700"}`}>
+                                {player.liveTotal}
+                              </span>
+                              <span className={`text-gray-400 text-[10px] transition-transform ${isExpanded ? "rotate-180" : ""}`}>▾</span>
+                            </div>
                           </td>
                         </tr>
+
+                        {/* Expanded: all today's matches for this player */}
+                        {isExpanded && (
+                          <tr key={`${player.player_id}-detail`} className={`border-b border-gray-200 ${rowBg}`}>
+                            <td colSpan={6} className="px-3 pb-3 pt-1">
+                              <div className="flex flex-col gap-1">
+                                {matches.map((m) => {
+                                  const p = player.preds[m.id];
+                                  const mPts = p ? livePoints(m, p) : null;
+                                  const active = m.id === selectedId;
+                                  return (
+                                    <div
+                                      key={m.id}
+                                      onClick={(e) => { e.stopPropagation(); setSelectedId(m.id); }}
+                                      className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs cursor-pointer ${active ? "bg-fifa-blue/10 border border-fifa-blue/20" : "bg-gray-100/60"}`}
+                                    >
+                                      <div className="flex items-center gap-1.5 min-w-0">
+                                        <FlagImg team={m.home_team} h={12} />
+                                        <span className="text-gray-600 truncate max-w-[60px]">{shortName(m.home_team)}</span>
+                                        <span className="text-gray-300">vs</span>
+                                        <span className="text-gray-600 truncate max-w-[60px]">{shortName(m.away_team)}</span>
+                                        <FlagImg team={m.away_team} h={12} />
+                                      </div>
+                                      <div className="flex items-center gap-2 shrink-0 ml-2">
+                                        {p ? (
+                                          <span className="font-black text-[#003f7f] tabular-nums">{p.pred_home}–{p.pred_away}</span>
+                                        ) : (
+                                          <span className="text-gray-300">–</span>
+                                        )}
+                                        {mPts !== null && (
+                                          <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${ptsBg(mPts, m.status)}`}>
+                                            {mPts}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        </>
                       );
                     })
                   )}
