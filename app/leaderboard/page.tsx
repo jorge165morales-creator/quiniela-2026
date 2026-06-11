@@ -151,17 +151,6 @@ export default function LeaderboardPage() {
     }
 
     load();
-
-    const channel = supabase
-      .channel("leaderboard-updates")
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "predictions" },
-        () => load()
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
   }, [leagueId]);
 
   async function loadPlayerPredictions(playerId: string) {
