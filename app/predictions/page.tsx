@@ -7,9 +7,6 @@ import type { Match, Prediction } from "@/types";
 import FlagImg from "@/components/FlagImg";
 import { FLAG_ISO } from "@/lib/flags";
 
-// Auto-lock: predictions close when the tournament starts (June 11, 2026 noon ET)
-const TOURNAMENT_START = new Date("2026-06-11T17:00:00Z");
-
 type PredictionMap = Record<string, { home: string; away: string }>;
 type GroupedMatches = Record<string, Match[]>;
 
@@ -94,23 +91,6 @@ td{padding:3px 4px;vertical-align:middle}
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
-  const [timeLeft, setTimeLeft] = useState<string | null>(null);
-
-  useEffect(() => {
-    function update() {
-      const diff = TOURNAMENT_START.getTime() - Date.now();
-      if (diff <= 0) { setTimeLeft(null); return; }
-      const d = Math.floor(diff / 86400000);
-      const h = Math.floor((diff % 86400000) / 3600000);
-      const m = Math.floor((diff % 3600000) / 60000);
-      const s = Math.floor((diff % 60000) / 1000);
-      setTimeLeft(`${d}d ${String(h).padStart(2, "0")}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`);
-    }
-    update();
-    const id = setInterval(update, 1000);
-    return () => clearInterval(id);
-  }, []);
-
   useEffect(() => {
     const pid = localStorage.getItem("player_id");
     const pname = localStorage.getItem("player_name");
@@ -154,7 +134,7 @@ td{padding:3px 4px;vertical-align:middle}
         .single();
 
       if (matchData) setMatches(matchData as Match[]);
-      if (leagueData) setLocked(leagueData.predictions_locked || new Date() >= TOURNAMENT_START);
+      if (leagueData) setLocked(leagueData.predictions_locked ?? false);
       if (playerData) {
         setPaid(playerData.paid ?? false);
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -409,13 +389,7 @@ td{padding:3px 4px;vertical-align:middle}
 
   return (
     <div>
-      {/* Countdown */}
-      {!locked && timeLeft && (
-        <div className="bg-fifa-blue/5 border border-fifa-blue/20 rounded-2xl px-5 py-4 mb-6 flex items-center justify-between">
-          <p className="text-sm font-semibold text-gray-500">Quiniela cierra en:</p>
-          <p className="text-xl font-black text-fifa-blue font-mono tracking-tight">{timeLeft}</p>
-        </div>
-      )}
+
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
