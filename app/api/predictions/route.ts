@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
 
 // Auto-lock: predictions close when the tournament starts (June 11, 2026 noon ET)
-const TOURNAMENT_START = new Date("2026-06-11T16:00:00Z");
+const TOURNAMENT_START = new Date("2026-06-11T17:00:00Z");
 
 export async function POST(req: NextRequest) {
   const { player_id, predictions, submit } = await req.json();
