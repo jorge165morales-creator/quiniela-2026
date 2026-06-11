@@ -121,14 +121,20 @@ export default function HoyPage() {
     setLeagueLocked(league?.predictions_locked ?? false);
 
     const now = new Date();
-    const todayStr = now.toISOString().split("T")[0];
-    const tomorrowStr = new Date(now.getTime() + 86400000).toISOString().split("T")[0];
+    // Use local date boundaries so late-night UTC games (e.g., 02:00 UTC = 20:00 local) are included
+    const y = now.getFullYear();
+    const mo = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    const localMidnight = new Date(`${y}-${mo}-${d}T00:00:00`);
+    const nextLocalMidnight = new Date(localMidnight.getTime() + 86400000);
+    const startUtc = localMidnight.toISOString();
+    const endUtc = nextLocalMidnight.toISOString();
 
     let { data: todayMatches } = await supabase
       .from("matches")
       .select("id, home_team, away_team, group, matchday, kickoff_at, home_score, away_score, status")
-      .gte("kickoff_at", `${todayStr}T00:00:00`)
-      .lt("kickoff_at", `${tomorrowStr}T00:00:00`)
+      .gte("kickoff_at", startUtc)
+      .lt("kickoff_at", endUtc)
       .order("kickoff_at");
 
     let foundToday = true;
@@ -143,13 +149,18 @@ export default function HoyPage() {
         .single();
 
       if (next) {
-        const nextDay = next.kickoff_at.split("T")[0];
-        const dayAfter = new Date(new Date(nextDay).getTime() + 86400000).toISOString().split("T")[0];
+        // Find the local-day window for the next match date
+        const nextKickoff = new Date(next.kickoff_at);
+        const ny = nextKickoff.getFullYear();
+        const nmo = String(nextKickoff.getMonth() + 1).padStart(2, "0");
+        const nd = String(nextKickoff.getDate()).padStart(2, "0");
+        const nextDayMidnight = new Date(`${ny}-${nmo}-${nd}T00:00:00`);
+        const nextDayEnd = new Date(nextDayMidnight.getTime() + 86400000);
         const { data: upcoming } = await supabase
           .from("matches")
           .select("id, home_team, away_team, group, matchday, kickoff_at, home_score, away_score, status")
-          .gte("kickoff_at", `${nextDay}T00:00:00`)
-          .lt("kickoff_at", `${dayAfter}T00:00:00`)
+          .gte("kickoff_at", nextDayMidnight.toISOString())
+          .lt("kickoff_at", nextDayEnd.toISOString())
           .order("kickoff_at");
         todayMatches = upcoming ?? [];
       }
