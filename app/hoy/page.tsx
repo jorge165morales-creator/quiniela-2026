@@ -333,10 +333,17 @@ export default function HoyPage() {
                       </td>
                     </tr>
                   ) : (
-                    players.map((player, i) => {
+                    [...players]
+                      .map((player) => {
+                        const pred = selectedMatch ? player.preds[selectedMatch.id] : undefined;
+                        const pts = pred && selectedMatch ? livePoints(selectedMatch, pred) : null;
+                        const liveExtra = selectedMatch?.status === "live" ? (pts ?? 0) : 0;
+                        return { ...player, pred, pts, liveTotal: player.total_points + liveExtra };
+                      })
+                      .sort((a, b) => b.liveTotal - a.liveTotal || b.exact_scores - a.exact_scores)
+                      .map((player, i) => {
                       const isMe = player.player_id === myPlayerId;
-                      const pred = selectedMatch ? player.preds[selectedMatch.id] : undefined;
-                      const pts = pred && selectedMatch ? livePoints(selectedMatch, pred) : null;
+                      const { pred, pts } = player;
                       const rowBg = isMe
                         ? "bg-blue-50"
                         : i % 2 === 0 ? "bg-white" : "bg-gray-50/60";
@@ -393,10 +400,10 @@ export default function HoyPage() {
                             )}
                           </td>
 
-                          {/* Acum (total points) */}
+                          {/* Acum (live total) */}
                           <td className="text-center px-2 py-2">
                             <span className={`text-xs font-black ${isMe ? "text-fifa-blue" : "text-gray-700"}`}>
-                              {player.total_points}
+                              {player.liveTotal}
                             </span>
                           </td>
                         </tr>
