@@ -368,18 +368,170 @@ export default function AdminDashboard() {
 
   return (
     <div className="text-white">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-4">
         <h1 className="text-3xl font-black">Panel Admin</h1>
-        <button
-          onClick={() => {
-            localStorage.removeItem("admin_secret");
-            router.push("/admin");
-          }}
-          className="text-sm text-red-400 hover:text-red-300"
-        >
-          Salir
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={syncScores}
+            disabled={syncing}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-green-400 font-semibold rounded-lg text-sm hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed border border-gray-700"
+          >
+            <span className={syncing ? "animate-spin inline-block" : ""}>🔄</span>
+            {syncing ? "Sincronizando..." : "Sync scores"}
+          </button>
+          <button
+            onClick={() => {
+              localStorage.removeItem("admin_secret");
+              router.push("/admin");
+            }}
+            className="text-sm text-red-400 hover:text-red-300"
+          >
+            Salir
+          </button>
+        </div>
       </div>
+      {syncMsg && (
+        <div className={`mb-6 px-4 py-3 rounded-xl text-sm ${syncMsg.type === "ok" ? "bg-green-950 border border-green-700 text-green-300" : "bg-red-950 border border-red-700 text-red-300"}`}>
+          {syncMsg.text}
+        </div>
+      )}
+
+      {saveError && (
+        <div className="mb-4 px-4 py-3 bg-red-950 border border-red-700 rounded-xl text-red-300 text-sm">
+          {saveError}
+        </div>
+      )}
+
+      {/* Matches */}
+      <section className="mb-10">
+        <div className="mb-3">
+          <h2 className="text-lg font-bold text-fifa-gold">Partidos</h2>
+        </div>
+        <div className="flex gap-2 text-sm mb-4">
+          {(["all", "upcoming", "live", "finished"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-3 py-1 rounded-lg font-medium transition-colors ${
+                filter === f
+                  ? "bg-fifa-gold text-gray-950"
+                  : "bg-gray-800 text-gray-400 hover:text-white"
+              }`}
+            >
+              {f === "all" ? "Todos" : f === "upcoming" ? "Próximos" : f === "live" ? "En vivo" : "Terminados"}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex flex-col gap-3">
+          {filtered.map((match) => (
+            <div key={match.id} className="bg-gray-900 text-white rounded-xl overflow-hidden">
+              {/* Match row */}
+              <div className="px-5 py-4">
+                <div className="flex items-center gap-4">
+                  {/* Teams & score inputs */}
+                  <div className="flex items-center gap-3 flex-1">
+                    <span className="text-sm font-semibold text-right flex-1 truncate">
+                      {match.home_team}
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={99}
+                      value={match.editHome}
+                      onChange={(e) => updateMatchEdit(match.id, "editHome", e.target.value)}
+                      placeholder="–"
+                      className="w-12 h-10 bg-gray-800 border border-gray-700 rounded-lg text-center font-bold text-lg text-white focus:outline-none focus:border-fifa-gold"
+                    />
+                    <span className="text-gray-500 font-bold">:</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={99}
+                      value={match.editAway}
+                      onChange={(e) => updateMatchEdit(match.id, "editAway", e.target.value)}
+                      placeholder="–"
+                      className="w-12 h-10 bg-gray-800 border border-gray-700 rounded-lg text-center font-bold text-lg text-white focus:outline-none focus:border-fifa-gold"
+                    />
+                    <span className="text-sm font-semibold text-left flex-1 truncate">
+                      {match.away_team}
+                    </span>
+                  </div>
+
+                  {/* Status, save, expand */}
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className={`text-xs font-medium ${statusColor[match.status]}`}>
+                      {match.status === "upcoming" ? "Próximo" : match.status === "live" ? "En vivo" : "Terminado"}
+                    </span>
+                    <button
+                      onClick={() => saveResult(match)}
+                      disabled={match.saving || match.editHome === "" || match.editAway === ""}
+                      className="px-4 py-2 bg-fifa-gold text-gray-950 font-bold rounded-lg text-sm hover:bg-yellow-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {match.saving ? "..." : match.saved ? "Guardado!" : "Guardar"}
+                    </button>
+                    <button
+                      onClick={() => toggleExpand(match.id)}
+                      className="px-3 py-2 bg-gray-800 text-gray-400 hover:text-white rounded-lg text-sm transition-colors"
+                      title="Ver predicciones"
+                    >
+                      {expandedMatch === match.id ? "▲" : "▼"}
+                    </button>
+                  </div>
+                </div>
+
+                <p className="text-xs text-gray-600 mt-2">
+                  Grupo {match.group} ·{" "}
+                  {new Date(match.kickoff_at).toLocaleDateString("es-MX", {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </p>
+              </div>
+
+              {/* Predictions panel */}
+              {expandedMatch === match.id && (
+                <div className="border-t border-gray-800 px-5 py-4 bg-gray-950">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
+                    Predicciones de los jugadores
+                  </p>
+                  {loadingPredictions && !matchPredictions[match.id] ? (
+                    <p className="text-gray-500 text-sm">Cargando...</p>
+                  ) : !matchPredictions[match.id]?.length ? (
+                    <p className="text-gray-600 text-sm">Nadie ha predicho este partido.</p>
+                  ) : (
+                    <div className="flex flex-col gap-1">
+                      {/* Header */}
+                      <div className="grid grid-cols-[1fr_6rem_5rem] text-xs text-gray-600 font-medium mb-1">
+                        <span>Jugador</span>
+                        <span className="text-center">Predicción</span>
+                        <span className="text-center">Pts</span>
+                      </div>
+                      {matchPredictions[match.id].map((p, i) => (
+                        <div
+                          key={i}
+                          className="grid grid-cols-[1fr_6rem_5rem] items-center py-1.5 border-t border-gray-800 text-sm"
+                        >
+                          <span className="text-gray-300 truncate">{p.player_name}</span>
+                          <span className="text-center font-mono font-semibold text-white">
+                            {p.home_score} – {p.away_score}
+                          </span>
+                          <span className={`text-center text-sm ${pointsColor(p.points)}`}>
+                            {p.points !== null ? `${p.points} pts` : "—"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* Leagues */}
       <section className="mb-10">
@@ -540,155 +692,6 @@ export default function AdminDashboard() {
         </div>
       </section>
 
-      {saveError && (
-        <div className="mb-4 px-4 py-3 bg-red-950 border border-red-700 rounded-xl text-red-300 text-sm">
-          {saveError}
-        </div>
-      )}
-
-      {/* Matches */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-bold text-fifa-gold">Partidos</h2>
-          <button
-            onClick={syncScores}
-            disabled={syncing}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-green-400 font-semibold rounded-lg text-sm hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed border border-gray-700"
-          >
-            <span className={syncing ? "animate-spin inline-block" : ""}>🔄</span>
-            {syncing ? "Sincronizando..." : "Sync scores"}
-          </button>
-        </div>
-        {syncMsg && (
-          <div className={`mb-4 px-4 py-3 rounded-xl text-sm ${syncMsg.type === "ok" ? "bg-green-950 border border-green-700 text-green-300" : "bg-red-950 border border-red-700 text-red-300"}`}>
-            {syncMsg.text}
-          </div>
-        )}
-        <div className="flex gap-2 text-sm mb-4">
-          {(["all", "upcoming", "live", "finished"] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-3 py-1 rounded-lg font-medium transition-colors ${
-                filter === f
-                  ? "bg-fifa-gold text-gray-950"
-                  : "bg-gray-800 text-gray-400 hover:text-white"
-              }`}
-            >
-              {f === "all" ? "Todos" : f === "upcoming" ? "Próximos" : f === "live" ? "En vivo" : "Terminados"}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex flex-col gap-3">
-          {filtered.map((match) => (
-            <div key={match.id} className="bg-gray-900 text-white rounded-xl overflow-hidden">
-              {/* Match row */}
-              <div className="px-5 py-4">
-                <div className="flex items-center gap-4">
-                  {/* Teams & score inputs */}
-                  <div className="flex items-center gap-3 flex-1">
-                    <span className="text-sm font-semibold text-right flex-1 truncate">
-                      {match.home_team}
-                    </span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={99}
-                      value={match.editHome}
-                      onChange={(e) => updateMatchEdit(match.id, "editHome", e.target.value)}
-                      placeholder="–"
-                      className="w-12 h-10 bg-gray-800 border border-gray-700 rounded-lg text-center font-bold text-lg text-white focus:outline-none focus:border-fifa-gold"
-                    />
-                    <span className="text-gray-500 font-bold">:</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={99}
-                      value={match.editAway}
-                      onChange={(e) => updateMatchEdit(match.id, "editAway", e.target.value)}
-                      placeholder="–"
-                      className="w-12 h-10 bg-gray-800 border border-gray-700 rounded-lg text-center font-bold text-lg text-white focus:outline-none focus:border-fifa-gold"
-                    />
-                    <span className="text-sm font-semibold text-left flex-1 truncate">
-                      {match.away_team}
-                    </span>
-                  </div>
-
-                  {/* Status, save, expand */}
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className={`text-xs font-medium ${statusColor[match.status]}`}>
-                      {match.status === "upcoming" ? "Próximo" : match.status === "live" ? "En vivo" : "Terminado"}
-                    </span>
-                    <button
-                      onClick={() => saveResult(match)}
-                      disabled={match.saving || match.editHome === "" || match.editAway === ""}
-                      className="px-4 py-2 bg-fifa-gold text-gray-950 font-bold rounded-lg text-sm hover:bg-yellow-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      {match.saving ? "..." : match.saved ? "Guardado!" : "Guardar"}
-                    </button>
-                    <button
-                      onClick={() => toggleExpand(match.id)}
-                      className="px-3 py-2 bg-gray-800 text-gray-400 hover:text-white rounded-lg text-sm transition-colors"
-                      title="Ver predicciones"
-                    >
-                      {expandedMatch === match.id ? "▲" : "▼"}
-                    </button>
-                  </div>
-                </div>
-
-                <p className="text-xs text-gray-600 mt-2">
-                  Grupo {match.group} ·{" "}
-                  {new Date(match.kickoff_at).toLocaleDateString("es-MX", {
-                    weekday: "short",
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
-              </div>
-
-              {/* Predictions panel */}
-              {expandedMatch === match.id && (
-                <div className="border-t border-gray-800 px-5 py-4 bg-gray-950">
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
-                    Predicciones de los jugadores
-                  </p>
-                  {loadingPredictions && !matchPredictions[match.id] ? (
-                    <p className="text-gray-500 text-sm">Cargando...</p>
-                  ) : !matchPredictions[match.id]?.length ? (
-                    <p className="text-gray-600 text-sm">Nadie ha predicho este partido.</p>
-                  ) : (
-                    <div className="flex flex-col gap-1">
-                      {/* Header */}
-                      <div className="grid grid-cols-[1fr_6rem_5rem] text-xs text-gray-600 font-medium mb-1">
-                        <span>Jugador</span>
-                        <span className="text-center">Predicción</span>
-                        <span className="text-center">Pts</span>
-                      </div>
-                      {matchPredictions[match.id].map((p, i) => (
-                        <div
-                          key={i}
-                          className="grid grid-cols-[1fr_6rem_5rem] items-center py-1.5 border-t border-gray-800 text-sm"
-                        >
-                          <span className="text-gray-300 truncate">{p.player_name}</span>
-                          <span className="text-center font-mono font-semibold text-white">
-                            {p.home_score} – {p.away_score}
-                          </span>
-                          <span className={`text-center text-sm ${pointsColor(p.points)}`}>
-                            {p.points !== null ? `${p.points} pts` : "—"}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </section>
     </div>
   );
 }
