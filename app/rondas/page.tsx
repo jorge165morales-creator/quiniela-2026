@@ -65,10 +65,21 @@ export default function RondasPage() {
     const playerMap: Record<string, string> = {};
     for (const p of filteredPlayers) playerMap[p.id] = p.name;
 
-    // Get all predictions with match info
+    // Fetch matches separately to build match_id -> matchday map
+    const { data: matchData } = await supabase
+      .from("matches")
+      .select("id, matchday, status")
+      .in("matchday", [1, 2, 3]);
+
+    if (!matchData) { setLoading(false); return; }
+
+    const matchMap: Record<string, number> = {};
+    for (const m of matchData) matchMap[m.id] = m.matchday;
+
+    // Fetch predictions with match_id (no nested join — avoids PostgREST embedding issues)
     const { data: preds } = await supabase
       .from("predictions")
-      .select("player_id, points, matches(matchday, status)")
+      .select("player_id, match_id, points")
       .in("player_id", playerIds);
 
     if (!preds) { setLoading(false); return; }
@@ -83,13 +94,10 @@ export default function RondasPage() {
             2: { pointsByPlayer: {}, exactsByPlayer: {}, finished: 0, total: 0 },
             3: { pointsByPlayer: {}, exactsByPlayer: {}, finished: 0, total: 0 } };
 
-    for (const pred of preds as any[]) {
-      const md: number = pred.matches?.matchday;
+    for (const pred of preds) {
+      const md = matchMap[pred.match_id];
       if (!md || !roundMap[md]) continue;
       const r = roundMap[md];
-
-      // Count total and finished matches (use first player as reference to avoid double-counting)
-      // We'll count matches separately below
 
       if (pred.points !== null) {
         const pid = pred.player_id;
@@ -101,18 +109,11 @@ export default function RondasPage() {
     }
 
     // Count finished and total matches per matchday
-    const { data: matchData } = await supabase
-      .from("matches")
-      .select("matchday, status")
-      .in("matchday", [1, 2, 3]);
-
-    if (matchData) {
-      for (const m of matchData as any[]) {
-        const md = m.matchday;
-        if (!roundMap[md]) continue;
-        roundMap[md].total++;
-        if (m.status === "finished") roundMap[md].finished++;
-      }
+    for (const m of matchData) {
+      const md = m.matchday;
+      if (!roundMap[md]) continue;
+      roundMap[md].total++;
+      if (m.status === "finished") roundMap[md].finished++;
     }
 
     // Build sorted entries per round
