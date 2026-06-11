@@ -54,6 +54,7 @@ export default function LeaderboardPage() {
   const [playerPredictions, setPlayerPredictions] = useState<Record<string, PlayerPrediction[]>>({});
   const [loadingPlayer, setLoadingPlayer] = useState(false);
   const [unicoSeis, setUnicoSeis] = useState<UnicoSeis[]>([]);
+  const [activeZone, setActiveZone] = useState<ZoneKey>("green");
 
   const prevRanks = useRef<Record<string, number>>({});
 
@@ -335,20 +336,85 @@ export default function LeaderboardPage() {
         </p>
       ) : (
         <>
-          {/* 5-column zone grid */}
-          <div className="overflow-x-auto -mx-4 px-4">
-            <div className="grid grid-cols-5 gap-2 min-w-[560px]">
+          {/* Mobile: zone tabs */}
+          <div className="md:hidden mb-3 flex gap-1 overflow-x-auto pb-1">
+            {ZONES.map((zone) => (
+              <button
+                key={zone.key}
+                onClick={() => setActiveZone(zone.key)}
+                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors whitespace-nowrap ${
+                  activeZone === zone.key
+                    ? `${zone.headerCls} text-white`
+                    : "bg-gray-100 text-gray-500"
+                }`}
+              >
+                {zone.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Mobile: single-column list for active zone */}
+          <div className="md:hidden">
+            {(() => {
+              const zone = ZONES.find((z) => z.key === activeZone)!;
+              const zEntries = zoneEntries[zone.key];
+              const startRank = submittedEntries.findIndex((e) => e.player_id === zEntries[0]?.player_id) + 1;
+              return (
+                <div className={`bg-white border ${zone.borderCls} rounded-xl overflow-hidden`}>
+                  <div className={`${zone.headerCls} text-white flex items-center justify-between px-4 py-2`}>
+                    <p className="font-black text-sm">{zone.label}</p>
+                    <p className={`text-xs ${zone.countCls}`}>{zEntries.length} jugadores</p>
+                  </div>
+                  {zEntries.length === 0 ? (
+                    <p className="text-sm text-gray-300 text-center py-6">—</p>
+                  ) : (
+                    zEntries.map((entry, idx) => {
+                      const rank = startRank + idx;
+                      const isMe = entry.player_id === myPlayerId;
+                      const isExpanded = expandedPlayer === entry.player_id;
+                      return (
+                        <div
+                          key={entry.player_id}
+                          onClick={() => togglePlayer(entry.player_id)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => e.key === "Enter" && togglePlayer(entry.player_id)}
+                          className={`flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 last:border-0 cursor-pointer transition-colors ${
+                            isExpanded ? "bg-blue-50" : isMe ? "bg-amber-50 hover:bg-amber-100" : "hover:bg-gray-50"
+                          }`}
+                        >
+                          <span className="text-xs text-gray-400 w-5 text-center shrink-0 font-bold">{rank}</span>
+                          <SmallAvatar name={entry.player_name} isMe={isMe} playerId={entry.player_id} />
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-bold truncate leading-tight ${isMe ? "text-fifa-blue" : "text-gray-800"}`}>
+                              {entry.player_name}
+                            </p>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-black text-fifa-blue">{entry.total_points}p</span>
+                              <DeltaBadge delta={entry.delta} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Desktop: 5-column zone grid */}
+          <div className="hidden md:block">
+            <div className="grid grid-cols-5 gap-2">
               {ZONES.map((zone) => {
                 const zEntries = zoneEntries[zone.key];
                 const startRank = submittedEntries.findIndex((e) => e.player_id === zEntries[0]?.player_id) + 1;
                 return (
                   <div key={zone.key} className="flex flex-col">
-                    {/* Column header */}
                     <div className={`${zone.headerCls} text-white text-center py-2 px-1 rounded-t-xl`}>
                       <p className="font-black text-[11px] uppercase tracking-wide leading-tight">{zone.label}</p>
                       <p className={`text-[10px] ${zone.countCls} mt-0.5`}>{zEntries.length} jugadores</p>
                     </div>
-                    {/* Player list */}
                     <div className={`bg-white border-x border-b ${zone.borderCls} rounded-b-xl overflow-hidden flex-1`}>
                       {zEntries.length === 0 ? (
                         <p className="text-xs text-gray-300 text-center py-4">—</p>
