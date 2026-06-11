@@ -45,22 +45,22 @@ export default function PredictionsPage() {
     const date = new Date().toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" });
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Quiniela ${playerName ?? ""}</title><style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:10px;padding:12px 16px;background:#fff;color:#111}
-h1{font-size:15px;font-weight:900}
-.sub{color:#666;font-size:9px;margin:2px 0 10px}
-.cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:9.5px;padding:8px 12px;background:#fff;color:#111}
+h1{font-size:14px;font-weight:900}
+.sub{color:#666;font-size:8.5px;margin:2px 0 6px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 table{width:100%;border-collapse:collapse}
 tr{border-bottom:1px solid #eee}
 tr:last-child{border-bottom:none}
-td{padding:3px 4px;vertical-align:middle}
+td{padding:2px 4px;vertical-align:middle}
 .home{text-align:right}
-.score{text-align:center;font-weight:900;color:#003f7f;white-space:nowrap;min-width:46px}
+.score{text-align:center;font-weight:900;color:#003f7f;white-space:nowrap;min-width:42px}
 .score.empty{color:#ccc;font-weight:400}
 .away{text-align:left}
-.team{font-size:9px;color:#333}
+.team{font-size:8.5px;color:#333}
 .flag{width:14px;height:10px;object-fit:cover;vertical-align:middle;border:1px solid #eee}
-.footer{margin-top:10px;text-align:center;font-size:8px;color:#aaa;border-top:1px solid #eee;padding-top:8px}
-@media print{@page{margin:10mm}}
+.footer{margin-top:6px;text-align:center;font-size:7.5px;color:#aaa;border-top:1px solid #eee;padding-top:4px}
+@media print{@page{margin:6mm}}
 </style></head><body>
 <h1>Quiniela Mundial 2026</h1>
 <p class="sub">Fase de Grupos · ${playerName ?? ""} · ${predCount}/${matches.length} predicciones · ${date}</p>
