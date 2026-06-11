@@ -177,11 +177,18 @@ export default function HoyPage() {
 
     if (matchList.length === 0) { setLoading(false); return; }
 
+    // Get submitted player IDs via API (uses service role to count across RLS limits)
+    const submittedRes = await fetch(`/api/leaderboard?league_id=${leagueId}`);
+    const submittedJson = await submittedRes.json();
+    const submittedIds: string[] = submittedJson.submitted ?? [];
+
+    if (submittedIds.length === 0) { setLoading(false); return; }
+
     const { data: submitted } = await supabase
       .from("leaderboard")
       .select("player_id, player_name, total_points, exact_scores")
       .eq("league_id", leagueId!)
-      .eq("predictions_count", 72)
+      .in("player_id", submittedIds)
       .order("total_points", { ascending: false })
       .order("exact_scores", { ascending: false });
 
