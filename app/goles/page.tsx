@@ -6,8 +6,9 @@ import { supabase } from "@/lib/supabase";
 type GolesEntry = {
   player_id: string;
   player_name: string;
-  predicted_goals: number;
-  difference: number; // predicted - actual
+  predicted_current: number; // predicted goals for finished matches only
+  predicted_total: number;   // predicted goals across all 72 matches
+  difference: number;        // predicted_current - actualGoals
 };
 
 export default function GolesPage() {
@@ -38,17 +39,25 @@ export default function GolesPage() {
   async function load() {
     setLoading(true);
 
-    // Get all players in the league
+    // Get submitted+paid player IDs (same filter as leaderboard)
+    const lbRes = await fetch(`/api/leaderboard?league_id=${leagueId}`);
+    const lbData = lbRes.ok ? await lbRes.json() : null;
+    const submittedIds: Set<string> = new Set(lbData?.submitted ?? []);
+
     const { data: playerData } = await supabase
       .from("players")
       .select("id, name")
-      .eq("league_id", leagueId!);
+      .eq("league_id", leagueId!)
+      .eq("paid", true);
 
     if (!playerData || playerData.length === 0) { setLoading(false); return; }
 
-    const playerIds = playerData.map((p) => p.id);
+    const filteredPlayers = playerData.filter((p) => submittedIds.has(p.id));
+    if (filteredPlayers.length === 0) { setLoading(false); return; }
 
-    // Get all finished matches to compute actual goals
+    const playerIds = filteredPlayers.map((p) => p.id);
+
+    // Get all matches — build finished match set and actual goal total
     const { data: matchData } = await supabase
       .from("matches")
       .select("id, home_score, away_score, status");
@@ -56,11 +65,14 @@ export default function GolesPage() {
     let actualTotal = 0;
     let finished = 0;
     let total = 0;
+    const finishedMatchIds = new Set<string>();
+
     if (matchData) {
-      for (const m of matchData as any[]) {
+      for (const m of matchData) {
         total++;
         if (m.status === "finished" && m.home_score !== null && m.away_score !== null) {
           actualTotal += m.home_score + m.away_score;
+          finishedMatchIds.add(m.id);
           finished++;
         }
       }
@@ -69,30 +81,38 @@ export default function GolesPage() {
     setFinishedMatches(finished);
     setTotalMatches(total);
 
-    // Get all predictions for league players (sum predicted goals)
+    // Get predictions with match_id so we can split finished vs total
     const { data: predData } = await supabase
       .from("predictions")
-      .select("player_id, home_score, away_score")
+      .select("player_id, match_id, home_score, away_score")
       .in("player_id", playerIds);
 
-    const predictedByPlayer: Record<string, number> = {};
+    const currentByPlayer: Record<string, number> = {};
+    const totalByPlayer: Record<string, number> = {};
+
     if (predData) {
-      for (const p of predData as any[]) {
-        predictedByPlayer[p.player_id] = (predictedByPlayer[p.player_id] ?? 0) + p.home_score + p.away_score;
+      for (const p of predData) {
+        const goals = p.home_score + p.away_score;
+        totalByPlayer[p.player_id] = (totalByPlayer[p.player_id] ?? 0) + goals;
+        if (finishedMatchIds.has(p.match_id)) {
+          currentByPlayer[p.player_id] = (currentByPlayer[p.player_id] ?? 0) + goals;
+        }
       }
     }
 
-    const result: GolesEntry[] = playerData.map((p) => {
-      const predicted = predictedByPlayer[p.id] ?? 0;
+    const result: GolesEntry[] = filteredPlayers.map((p) => {
+      const predicted_current = currentByPlayer[p.id] ?? 0;
+      const predicted_total = totalByPlayer[p.id] ?? 0;
       return {
         player_id: p.id,
         player_name: p.name,
-        predicted_goals: predicted,
-        difference: predicted - actualTotal,
+        predicted_current,
+        predicted_total,
+        difference: predicted_current - actualTotal,
       };
     });
 
-    // Sort by absolute difference (closest to 0 wins)
+    // Sort by absolute difference of finished-match goals (closest to 0 wins)
     result.sort((a, b) => Math.abs(a.difference) - Math.abs(b.difference));
 
     setEntries(result);
@@ -218,7 +238,7 @@ export default function GolesPage() {
                     {isMe && <span className="text-xs text-gray-400 font-normal ml-1">(tú)</span>}
                   </span>
                   <span className="text-xs text-gray-400">
-                    {entry.predicted_goals} goles predichos
+                    {entry.predicted_current} / {entry.predicted_total} goles
                     {isWinner && <span className="ml-2 font-bold text-yellow-600">⚽ Ganador</span>}
                   </span>
                 </div>
@@ -243,7 +263,7 @@ export default function GolesPage() {
 
       {tournamentStarted && (
         <p className="text-xs text-gray-400 text-center mt-4">
-          Diferencia = goles predichos − goles reales. El más cercano a 0 gana.
+          Goles: predichos en partidos jugados / total predicho en 72 partidos. Diferencia vs goles reales hasta ahora.
         </p>
       )}
     </div>
