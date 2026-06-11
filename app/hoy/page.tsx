@@ -231,6 +231,20 @@ export default function HoyPage() {
   const isFinished = selectedMatch?.status === "finished";
   const hasScore = selectedMatch && selectedMatch.home_score !== null;
 
+  // Per-match scoreline counts — to detect unique (Único 6) predictions
+  const scorelineCounts: Record<string, Record<string, number>> = {};
+  for (const player of players) {
+    for (const [matchId, pred] of Object.entries(player.preds)) {
+      const key = `${pred.pred_home}-${pred.pred_away}`;
+      if (!scorelineCounts[matchId]) scorelineCounts[matchId] = {};
+      scorelineCounts[matchId][key] = (scorelineCounts[matchId][key] || 0) + 1;
+    }
+  }
+  function isUnique(matchId: string, pred: MatchPrediction | undefined): boolean {
+    if (!pred) return false;
+    return (scorelineCounts[matchId]?.[`${pred.pred_home}-${pred.pred_away}`] ?? 0) === 1;
+  }
+
   if (!leagueId) {
     return (
       <div className="max-w-lg mx-auto px-4 py-16 text-center">
@@ -405,14 +419,20 @@ export default function HoyPage() {
                           </td>
 
                           {/* Predicted home */}
-                          <td className={`text-center px-2 py-2 text-sm font-bold tabular-nums ${pred ? "text-[#003f7f]" : "text-gray-300"}`}>
-                            {pred ? pred.pred_home : "–"}
-                          </td>
-
-                          {/* Predicted away */}
-                          <td className={`text-center px-2 py-2 text-sm font-bold tabular-nums ${pred ? "text-gray-700" : "text-gray-300"}`}>
-                            {pred ? pred.pred_away : "–"}
-                          </td>
+                          {(() => {
+                            const unique = selectedMatch ? isUnique(selectedMatch.id, pred) : false;
+                            return (
+                              <>
+                                <td className={`text-center px-2 py-2 text-sm font-bold tabular-nums rounded-l ${unique ? "bg-yellow-100 text-yellow-800" : pred ? "text-[#003f7f]" : "text-gray-300"}`}>
+                                  {pred ? pred.pred_home : "–"}
+                                </td>
+                                <td className={`text-center px-2 py-2 text-sm font-bold tabular-nums rounded-r ${unique ? "bg-yellow-100 text-yellow-800" : pred ? "text-gray-700" : "text-gray-300"}`}>
+                                  {pred ? pred.pred_away : "–"}
+                                  {unique && <span className="ml-0.5 text-[9px]">⭐</span>}
+                                </td>
+                              </>
+                            );
+                          })()}
 
                           {/* Match points */}
                           <td className="text-center px-2 py-2">
@@ -460,7 +480,9 @@ export default function HoyPage() {
                                       </div>
                                       <div className="flex items-center gap-2 shrink-0 ml-2">
                                         {p ? (
-                                          <span className="font-black text-[#003f7f] tabular-nums">{p.pred_home}–{p.pred_away}</span>
+                                          <span className={`font-black tabular-nums px-1.5 py-0.5 rounded ${isUnique(m.id, p) ? "bg-yellow-100 text-yellow-800" : "text-[#003f7f]"}`}>
+                                            {p.pred_home}–{p.pred_away}{isUnique(m.id, p) && <span className="ml-0.5 text-[9px]">⭐</span>}
+                                          </span>
                                         ) : (
                                           <span className="text-gray-300">–</span>
                                         )}
