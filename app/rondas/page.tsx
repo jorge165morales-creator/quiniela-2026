@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
 
 type RoundEntry = {
   player_id: string;
@@ -43,96 +42,14 @@ export default function RondasPage() {
   async function load() {
     setLoading(true);
 
-    // Get submitted+paid player IDs from leaderboard API (same filter as main leaderboard)
-    const lbRes = await fetch(`/api/leaderboard?league_id=${leagueId}`);
-    const lbData = lbRes.ok ? await lbRes.json() : null;
-    const submittedIds: Set<string> = new Set(lbData?.submitted ?? []);
-
-    // Get all players in this league who are paid
-    const { data: playerData } = await supabase
-      .from("players")
-      .select("id, name")
-      .eq("league_id", leagueId!)
-      .eq("paid", true);
-
-    if (!playerData || playerData.length === 0) { setLoading(false); return; }
-
-    // Only include players who have fully submitted
-    const filteredPlayers = playerData.filter((p) => submittedIds.has(p.id));
-    if (filteredPlayers.length === 0) { setLoading(false); return; }
-
-    const playerIds = filteredPlayers.map((p) => p.id);
-    const playerMap: Record<string, string> = {};
-    for (const p of filteredPlayers) playerMap[p.id] = p.name;
-
-    // Fetch matches separately to build match_id -> matchday map
-    const { data: matchData } = await supabase
-      .from("matches")
-      .select("id, matchday, status")
-      .in("matchday", [1, 2, 3]);
-
-    if (!matchData) { setLoading(false); return; }
-
-    const matchMap: Record<string, number> = {};
-    for (const m of matchData) matchMap[m.id] = m.matchday;
-
-    // Fetch predictions — use range to bypass the default 1000-row PostgREST limit
-    const { data: preds } = await supabase
-      .from("predictions")
-      .select("player_id, match_id, points")
-      .in("player_id", playerIds)
-      .range(0, 9999);
-
-    if (!preds) { setLoading(false); return; }
-
-    // Group by matchday
-    const roundMap: Record<number, {
-      pointsByPlayer: Record<string, number>;
-      exactsByPlayer: Record<string, number>;
-      finished: number;
-      total: number;
-    }> = { 1: { pointsByPlayer: {}, exactsByPlayer: {}, finished: 0, total: 0 },
-            2: { pointsByPlayer: {}, exactsByPlayer: {}, finished: 0, total: 0 },
-            3: { pointsByPlayer: {}, exactsByPlayer: {}, finished: 0, total: 0 } };
-
-    for (const pred of preds) {
-      const md = matchMap[pred.match_id];
-      if (!md || !roundMap[md]) continue;
-      const r = roundMap[md];
-
-      if (pred.points !== null) {
-        const pid = pred.player_id;
-        r.pointsByPlayer[pid] = (r.pointsByPlayer[pid] ?? 0) + pred.points;
-        if (pred.points === 6) {
-          r.exactsByPlayer[pid] = (r.exactsByPlayer[pid] ?? 0) + 1;
-        }
-      }
-    }
-
-    // Count finished and total matches per matchday
-    for (const m of matchData) {
-      const md = m.matchday;
-      if (!roundMap[md]) continue;
-      roundMap[md].total++;
-      if (m.status === "finished") roundMap[md].finished++;
-    }
-
-    // Build sorted entries per round
-    const result: RoundData[] = [1, 2, 3].map((md) => {
-      const r = roundMap[md];
-      const entries: RoundEntry[] = filteredPlayers.map((p) => ({
-        player_id: p.id,
-        player_name: p.name,
-        points: r.pointsByPlayer[p.id] ?? 0,
-        exact_scores: r.exactsByPlayer[p.id] ?? 0,
-      }));
-      entries.sort((a, b) => b.points - a.points || b.exact_scores - a.exact_scores);
-      return { matchday: md, entries, finished_matches: r.finished, total_matches: r.total };
-    });
+    const res = await fetch(`/api/rondas?league_id=${leagueId}`);
+    if (!res.ok) { setLoading(false); return; }
+    const data = await res.json();
+    const result: RoundData[] = data.rounds ?? [];
 
     setRounds(result);
 
-    // Auto-select the active round (first non-finished, or last)
+    // Auto-select the active round (first in-progress, or first started)
     const inProgress = result.find((r) => r.finished_matches > 0 && r.finished_matches < r.total_matches);
     const firstStarted = result.find((r) => r.finished_matches > 0);
     if (inProgress) setActiveTab(inProgress.matchday);
@@ -241,13 +158,10 @@ export default function RondasPage() {
                   >
                     {/* Rank */}
                     <div className="w-7 flex items-center justify-center shrink-0">
-                      {rank === 1 && activeRound.finished_matches === activeRound.total_matches
-                        ? <span className="text-xl">🥇</span>
-                        : rank === 1 ? <span className="text-xl">🥇</span>
-                        : rank === 2 ? <span className="text-xl">🥈</span>
-                        : rank === 3 ? <span className="text-xl">🥉</span>
-                        : <span className="w-7 h-7 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-500">{rank}</span>
-                      }
+                      {rank === 1 ? <span className="text-xl">🥇</span>
+                      : rank === 2 ? <span className="text-xl">🥈</span>
+                      : rank === 3 ? <span className="text-xl">🥉</span>
+                      : <span className="w-7 h-7 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-500">{rank}</span>}
                     </div>
 
                     {/* Avatar */}
@@ -259,10 +173,10 @@ export default function RondasPage() {
                         {entry.player_name}
                         {isMe && <span className="text-xs text-gray-400 font-normal ml-1">(tú)</span>}
                       </span>
-                      <span className="text-xs text-gray-400">{entry.exact_scores} exactos</span>
-                      {isWinner && (
-                        <span className="ml-2 text-xs font-bold text-yellow-600">🏅 Ganador</span>
-                      )}
+                      <span className="text-xs text-gray-400">
+                        {entry.exact_scores} exactos
+                        {isWinner && <span className="ml-2 font-bold text-yellow-600">🏅 Ganador</span>}
+                      </span>
                     </div>
 
                     {/* Points */}

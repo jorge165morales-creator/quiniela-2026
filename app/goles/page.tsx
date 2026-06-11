@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
 
 type GolesEntry = {
   player_id: string;
   player_name: string;
-  predicted_current: number; // predicted goals for finished matches only
-  predicted_total: number;   // predicted goals across all 72 matches
-  difference: number;        // predicted_current - actualGoals
+  predicted_current: number;
+  predicted_total: number;
+  difference: number;
 };
 
 export default function GolesPage() {
@@ -39,84 +38,14 @@ export default function GolesPage() {
   async function load() {
     setLoading(true);
 
-    // Get submitted+paid player IDs (same filter as leaderboard)
-    const lbRes = await fetch(`/api/leaderboard?league_id=${leagueId}`);
-    const lbData = lbRes.ok ? await lbRes.json() : null;
-    const submittedIds: Set<string> = new Set(lbData?.submitted ?? []);
+    const res = await fetch(`/api/goles?league_id=${leagueId}`);
+    if (!res.ok) { setLoading(false); return; }
+    const data = await res.json();
 
-    const { data: playerData } = await supabase
-      .from("players")
-      .select("id, name")
-      .eq("league_id", leagueId!)
-      .eq("paid", true);
-
-    if (!playerData || playerData.length === 0) { setLoading(false); return; }
-
-    const filteredPlayers = playerData.filter((p) => submittedIds.has(p.id));
-    if (filteredPlayers.length === 0) { setLoading(false); return; }
-
-    const playerIds = filteredPlayers.map((p) => p.id);
-
-    // Get all matches — build finished match set and actual goal total
-    const { data: matchData } = await supabase
-      .from("matches")
-      .select("id, home_score, away_score, status");
-
-    let actualTotal = 0;
-    let finished = 0;
-    let total = 0;
-    const finishedMatchIds = new Set<string>();
-
-    if (matchData) {
-      for (const m of matchData) {
-        total++;
-        if (m.status === "finished" && m.home_score !== null && m.away_score !== null) {
-          actualTotal += m.home_score + m.away_score;
-          finishedMatchIds.add(m.id);
-          finished++;
-        }
-      }
-    }
-    setActualGoals(actualTotal);
-    setFinishedMatches(finished);
-    setTotalMatches(total);
-
-    // Get predictions — use range to bypass the default 1000-row PostgREST limit
-    const { data: predData } = await supabase
-      .from("predictions")
-      .select("player_id, match_id, home_score, away_score")
-      .in("player_id", playerIds)
-      .range(0, 9999);
-
-    const currentByPlayer: Record<string, number> = {};
-    const totalByPlayer: Record<string, number> = {};
-
-    if (predData) {
-      for (const p of predData) {
-        const goals = p.home_score + p.away_score;
-        totalByPlayer[p.player_id] = (totalByPlayer[p.player_id] ?? 0) + goals;
-        if (finishedMatchIds.has(p.match_id)) {
-          currentByPlayer[p.player_id] = (currentByPlayer[p.player_id] ?? 0) + goals;
-        }
-      }
-    }
-
-    const result: GolesEntry[] = filteredPlayers.map((p) => {
-      const predicted_current = currentByPlayer[p.id] ?? 0;
-      const predicted_total = totalByPlayer[p.id] ?? 0;
-      return {
-        player_id: p.id,
-        player_name: p.name,
-        predicted_current,
-        predicted_total,
-        difference: predicted_current - actualTotal,
-      };
-    });
-
-    // Sort by absolute difference of finished-match goals (closest to 0 wins)
-    result.sort((a, b) => Math.abs(a.difference) - Math.abs(b.difference));
-
-    setEntries(result);
+    setActualGoals(data.actualGoals ?? 0);
+    setFinishedMatches(data.finishedMatches ?? 0);
+    setTotalMatches(data.totalMatches ?? 0);
+    setEntries(data.entries ?? []);
     setLoading(false);
   }
 
