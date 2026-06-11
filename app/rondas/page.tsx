@@ -43,17 +43,27 @@ export default function RondasPage() {
   async function load() {
     setLoading(true);
 
-    // Get all players in this league
+    // Get submitted+paid player IDs from leaderboard API (same filter as main leaderboard)
+    const lbRes = await fetch(`/api/leaderboard?league_id=${leagueId}`);
+    const lbData = lbRes.ok ? await lbRes.json() : null;
+    const submittedIds: Set<string> = new Set(lbData?.submitted ?? []);
+
+    // Get all players in this league who are paid
     const { data: playerData } = await supabase
       .from("players")
       .select("id, name")
-      .eq("league_id", leagueId!);
+      .eq("league_id", leagueId!)
+      .eq("paid", true);
 
     if (!playerData || playerData.length === 0) { setLoading(false); return; }
 
-    const playerIds = playerData.map((p) => p.id);
+    // Only include players who have fully submitted
+    const filteredPlayers = playerData.filter((p) => submittedIds.has(p.id));
+    if (filteredPlayers.length === 0) { setLoading(false); return; }
+
+    const playerIds = filteredPlayers.map((p) => p.id);
     const playerMap: Record<string, string> = {};
-    for (const p of playerData) playerMap[p.id] = p.name;
+    for (const p of filteredPlayers) playerMap[p.id] = p.name;
 
     // Get all predictions with match info
     const { data: preds } = await supabase
@@ -108,7 +118,7 @@ export default function RondasPage() {
     // Build sorted entries per round
     const result: RoundData[] = [1, 2, 3].map((md) => {
       const r = roundMap[md];
-      const entries: RoundEntry[] = playerData.map((p) => ({
+      const entries: RoundEntry[] = filteredPlayers.map((p) => ({
         player_id: p.id,
         player_name: p.name,
         points: r.pointsByPlayer[p.id] ?? 0,
