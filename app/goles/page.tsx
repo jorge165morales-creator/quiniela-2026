@@ -81,11 +81,12 @@ export default function GolesPage() {
     setFinishedMatches(finished);
     setTotalMatches(total);
 
-    // Get predictions with match_id so we can split finished vs total
+    // Get predictions — use range to bypass the default 1000-row PostgREST limit
     const { data: predData } = await supabase
       .from("predictions")
       .select("player_id, match_id, home_score, away_score")
-      .in("player_id", playerIds);
+      .in("player_id", playerIds)
+      .range(0, 9999);
 
     const currentByPlayer: Record<string, number> = {};
     const totalByPlayer: Record<string, number> = {};

@@ -76,11 +76,12 @@ export default function RondasPage() {
     const matchMap: Record<string, number> = {};
     for (const m of matchData) matchMap[m.id] = m.matchday;
 
-    // Fetch predictions with match_id (no nested join — avoids PostgREST embedding issues)
+    // Fetch predictions — use range to bypass the default 1000-row PostgREST limit
     const { data: preds } = await supabase
       .from("predictions")
       .select("player_id, match_id, points")
-      .in("player_id", playerIds);
+      .in("player_id", playerIds)
+      .range(0, 9999);
 
     if (!preds) { setLoading(false); return; }
 
