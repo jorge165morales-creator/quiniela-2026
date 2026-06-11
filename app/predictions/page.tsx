@@ -8,7 +8,7 @@ import FlagImg from "@/components/FlagImg";
 import { FLAG_ISO } from "@/lib/flags";
 
 // Auto-lock: predictions close when the tournament starts (June 11, 2026 noon ET)
-const TOURNAMENT_START = new Date("2026-06-11T16:00:00Z");
+const TOURNAMENT_START = new Date("2026-06-11T17:00:00Z");
 
 type PredictionMap = Record<string, { home: string; away: string }>;
 type GroupedMatches = Record<string, Match[]>;
