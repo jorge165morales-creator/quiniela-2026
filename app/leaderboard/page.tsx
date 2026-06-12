@@ -383,7 +383,7 @@ export default function LeaderboardPage() {
                             isExpanded ? "bg-blue-50" : isMe ? "bg-amber-50 hover:bg-amber-100" : "hover:bg-gray-50"
                           }`}
                         >
-                          <span className="text-xs text-gray-400 w-5 text-center shrink-0 font-bold">{rank}</span>
+                          <span className="text-xs text-gray-400 w-5 text-center shrink-0 font-bold">{rank === 1 ? "👑" : rank}</span>
                           <SmallAvatar name={entry.player_name} isMe={isMe} playerId={entry.player_id} />
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm font-bold truncate leading-tight ${isMe ? "text-fifa-blue" : "text-gray-800"}`}>
@@ -434,7 +434,7 @@ export default function LeaderboardPage() {
                                 isExpanded ? "bg-blue-50" : isMe ? "bg-amber-50 hover:bg-amber-100" : "hover:bg-gray-50"
                               }`}
                             >
-                              <span className="text-[10px] text-gray-400 w-4 text-center shrink-0 font-bold">{rank}</span>
+                              <span className="text-[10px] text-gray-400 w-4 text-center shrink-0 font-bold">{rank === 1 ? "👑" : rank}</span>
                               <SmallAvatar name={entry.player_name} isMe={isMe} playerId={entry.player_id} />
                               <div className="flex-1 min-w-0">
                                 <p className={`text-[11px] font-bold truncate leading-tight ${isMe ? "text-fifa-blue" : "text-gray-800"}`}>
