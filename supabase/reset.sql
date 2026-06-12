@@ -37,7 +37,7 @@ INSERT INTO matches (matchday, round, "group", home_team, away_team, kickoff_at)
 (3,'group','C','Marruecos',       'Haití',               '2026-06-24 22:00:00+00'),
 -- GRUPO D
 (1,'group','D','Estados Unidos',  'Paraguay',            '2026-06-13 01:00:00+00'),
-(1,'group','D','Australia',       'Turquía',             '2026-06-13 04:00:00+00'),
+(1,'group','D','Australia',       'Turquía',             '2026-06-14 04:00:00+00'),
 (2,'group','D','Estados Unidos',  'Australia',           '2026-06-19 19:00:00+00'),
 (2,'group','D','Turquía',         'Paraguay',            '2026-06-20 04:00:00+00'),
 (3,'group','D','Turquía',         'Estados Unidos',      '2026-06-26 02:00:00+00'),
