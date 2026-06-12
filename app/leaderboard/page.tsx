@@ -382,7 +382,7 @@ export default function LeaderboardPage() {
                           )}
                           {isLast && total > 1 && (
                             <div className="text-center py-1.5 bg-gray-800 text-gray-300 text-[10px] font-bold uppercase tracking-widest border-b border-gray-700">
-                              Dono do moro
+                              Dono do morro
                             </div>
                           )}
                           <div
@@ -446,7 +446,7 @@ export default function LeaderboardPage() {
                               )}
                               {isLast && total > 1 && (
                                 <div className="text-center py-1 bg-gray-800 text-gray-300 text-[9px] font-bold uppercase tracking-widest border-b border-gray-700">
-                                  Dono do moro
+                                  Dono do morro
                                 </div>
                               )}
                               <div
