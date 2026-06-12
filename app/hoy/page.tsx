@@ -112,117 +112,41 @@ export default function HoyPage() {
 
   async function load() {
     setLoading(true);
+    const res = await fetch(`/api/hoy?league_id=${leagueId}`);
+    if (!res.ok) { setLoading(false); return; }
+    const data = await res.json();
 
-    const { data: league } = await supabase
-      .from("leagues")
-      .select("predictions_locked")
-      .eq("id", leagueId!)
-      .single();
-    setLeagueLocked(league?.predictions_locked ?? false);
+    setLeagueLocked(data.leagueLocked ?? false);
+    setIsToday(data.isToday ?? true);
 
-    const now = new Date();
-    // Use local date boundaries so late-night UTC games (e.g., 02:00 UTC = 20:00 local) are included
-    const y = now.getFullYear();
-    const mo = String(now.getMonth() + 1).padStart(2, "0");
-    const d = String(now.getDate()).padStart(2, "0");
-    const localMidnight = new Date(`${y}-${mo}-${d}T00:00:00`);
-    const nextLocalMidnight = new Date(localMidnight.getTime() + 86400000);
-    const startUtc = localMidnight.toISOString();
-    const endUtc = nextLocalMidnight.toISOString();
-
-    let { data: todayMatches } = await supabase
-      .from("matches")
-      .select("id, home_team, away_team, group, matchday, kickoff_at, home_score, away_score, status")
-      .gte("kickoff_at", startUtc)
-      .lt("kickoff_at", endUtc)
-      .order("kickoff_at");
-
-    let foundToday = true;
-    if (!todayMatches || todayMatches.length === 0) {
-      foundToday = false;
-      const { data: next } = await supabase
-        .from("matches")
-        .select("kickoff_at")
-        .neq("status", "finished")
-        .order("kickoff_at")
-        .limit(1)
-        .single();
-
-      if (next) {
-        // Find the local-day window for the next match date
-        const nextKickoff = new Date(next.kickoff_at);
-        const ny = nextKickoff.getFullYear();
-        const nmo = String(nextKickoff.getMonth() + 1).padStart(2, "0");
-        const nd = String(nextKickoff.getDate()).padStart(2, "0");
-        const nextDayMidnight = new Date(`${ny}-${nmo}-${nd}T00:00:00`);
-        const nextDayEnd = new Date(nextDayMidnight.getTime() + 86400000);
-        const { data: upcoming } = await supabase
-          .from("matches")
-          .select("id, home_team, away_team, group, matchday, kickoff_at, home_score, away_score, status")
-          .gte("kickoff_at", nextDayMidnight.toISOString())
-          .lt("kickoff_at", nextDayEnd.toISOString())
-          .order("kickoff_at");
-        todayMatches = upcoming ?? [];
-      }
-    }
-
-    setIsToday(foundToday);
-    const matchList = (todayMatches ?? []) as TodayMatch[];
+    const matchList: TodayMatch[] = data.matches ?? [];
     setMatches(matchList);
+
+    // Normalize preds shape from API
+    const apiPlayers = (data.players ?? []) as {
+      player_id: string;
+      player_name: string;
+      total_points: number;
+      exact_scores: number;
+      preds: Record<string, { pred_home: number; pred_away: number; points: number | null }>;
+    }[];
+    setPlayers(
+      apiPlayers.map((p) => ({
+        ...p,
+        preds: Object.fromEntries(
+          Object.entries(p.preds).map(([matchId, pred]) => [
+            matchId,
+            { match_id: matchId, pred_home: pred.pred_home, pred_away: pred.pred_away, points: pred.points },
+          ])
+        ),
+      }))
+    );
 
     // Auto-select: prefer live match, then first upcoming, then first
     const live = matchList.find((m) => m.status === "live");
     const upcoming = matchList.find((m) => m.status === "upcoming");
     setSelectedId((live ?? upcoming ?? matchList[0])?.id ?? null);
 
-    if (matchList.length === 0) { setLoading(false); return; }
-
-    // Get submitted player IDs via API (uses service role to count across RLS limits)
-    const submittedRes = await fetch(`/api/leaderboard?league_id=${leagueId}`);
-    const submittedJson = await submittedRes.json();
-    const submittedIds: string[] = submittedJson.submitted ?? [];
-
-    if (submittedIds.length === 0) { setLoading(false); return; }
-
-    const { data: submitted } = await supabase
-      .from("leaderboard")
-      .select("player_id, player_name, total_points, exact_scores")
-      .eq("league_id", leagueId!)
-      .in("player_id", submittedIds)
-      .order("total_points", { ascending: false })
-      .order("exact_scores", { ascending: false });
-
-    if (!submitted || submitted.length === 0) { setLoading(false); return; }
-
-    const matchIds = matchList.map((m) => m.id);
-    const playerIds = submitted.map((p) => p.player_id);
-
-    const { data: preds } = await supabase
-      .from("predictions")
-      .select("player_id, match_id, home_score, away_score, points")
-      .in("match_id", matchIds)
-      .in("player_id", playerIds);
-
-    const predsByPlayer: Record<string, Record<string, MatchPrediction>> = {};
-    for (const pred of preds ?? []) {
-      if (!predsByPlayer[pred.player_id]) predsByPlayer[pred.player_id] = {};
-      predsByPlayer[pred.player_id][pred.match_id] = {
-        match_id: pred.match_id,
-        pred_home: pred.home_score,
-        pred_away: pred.away_score,
-        points: pred.points,
-      };
-    }
-
-    setPlayers(
-      submitted.map((p) => ({
-        player_id: p.player_id,
-        player_name: p.player_name,
-        total_points: p.total_points,
-        exact_scores: p.exact_scores,
-        preds: predsByPlayer[p.player_id] ?? {},
-      }))
-    );
     setLoading(false);
   }
 
