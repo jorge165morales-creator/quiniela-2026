@@ -392,17 +392,18 @@ export default function LeaderboardPage() {
                             onKeyDown={(e) => e.key === "Enter" && togglePlayer(entry.player_id)}
                             className={`flex items-center gap-3 px-4 py-2.5 border-b border-gray-100 last:border-0 cursor-pointer transition-colors ${
                               isLast ? "bg-gray-900 hover:bg-gray-800" :
+                              rank === 1 ? "bg-yellow-400 hover:bg-yellow-300" :
                               isExpanded ? "bg-blue-50" : isMe ? "bg-amber-50 hover:bg-amber-100" : "hover:bg-gray-50"
                             }`}
                           >
-                            <span className="text-xs text-gray-400 w-5 text-center shrink-0 font-bold">{rank === 1 ? "👑" : rank}</span>
+                            <span className={`text-xs w-5 text-center shrink-0 font-bold ${rank === 1 ? "text-yellow-800" : "text-gray-400"}`}>{rank === 1 ? "👑" : rank}</span>
                             <SmallAvatar name={entry.player_name} isMe={isMe} playerId={entry.player_id} />
                             <div className="flex-1 min-w-0">
-                              <p className={`text-sm font-bold truncate leading-tight ${isLast ? "text-white" : isMe ? "text-fifa-blue" : "text-gray-800"}`}>
+                              <p className={`text-sm font-bold truncate leading-tight ${isLast ? "text-white" : rank === 1 ? "text-gray-900" : isMe ? "text-fifa-blue" : "text-gray-800"}`}>
                                 {entry.player_name}
                               </p>
                               <div className="flex items-center gap-1.5">
-                                <span className={`text-xs font-black ${isLast ? "text-gray-400" : "text-fifa-blue"}`}>{entry.total_points}p</span>
+                                <span className={`text-xs font-black ${isLast ? "text-gray-400" : rank === 1 ? "text-yellow-800" : "text-fifa-blue"}`}>{entry.total_points}p</span>
                                 <DeltaBadge delta={entry.delta} />
                               </div>
                             </div>
@@ -456,17 +457,18 @@ export default function LeaderboardPage() {
                                 onKeyDown={(e) => e.key === "Enter" && togglePlayer(entry.player_id)}
                                 className={`flex items-center gap-1.5 px-2 py-2 border-b border-gray-100 last:border-0 cursor-pointer transition-colors ${
                                   isLast ? "bg-gray-900 hover:bg-gray-800" :
+                                  rank === 1 ? "bg-yellow-400 hover:bg-yellow-300" :
                                   isExpanded ? "bg-blue-50" : isMe ? "bg-amber-50 hover:bg-amber-100" : "hover:bg-gray-50"
                                 }`}
                               >
-                                <span className="text-[10px] text-gray-400 w-4 text-center shrink-0 font-bold">{rank === 1 ? "👑" : rank}</span>
+                                <span className={`text-[10px] w-4 text-center shrink-0 font-bold ${rank === 1 ? "text-yellow-800" : "text-gray-400"}`}>{rank === 1 ? "👑" : rank}</span>
                                 <SmallAvatar name={entry.player_name} isMe={isMe} playerId={entry.player_id} />
                                 <div className="flex-1 min-w-0">
-                                  <p className={`text-[11px] font-bold truncate leading-tight ${isLast ? "text-white" : isMe ? "text-fifa-blue" : "text-gray-800"}`}>
+                                  <p className={`text-[11px] font-bold truncate leading-tight ${isLast ? "text-white" : rank === 1 ? "text-gray-900" : isMe ? "text-fifa-blue" : "text-gray-800"}`}>
                                     {entry.player_name}
                                   </p>
                                   <div className="flex items-center gap-1">
-                                    <span className={`text-[10px] font-black ${isLast ? "text-gray-400" : "text-fifa-blue"}`}>{entry.total_points}p</span>
+                                    <span className={`text-[10px] font-black ${isLast ? "text-gray-400" : rank === 1 ? "text-yellow-800" : "text-fifa-blue"}`}>{entry.total_points}p</span>
                                     <DeltaBadge delta={entry.delta} />
                                   </div>
                                 </div>
