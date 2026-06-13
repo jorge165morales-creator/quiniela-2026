@@ -375,11 +375,6 @@ export default function LeaderboardPage() {
                       const isLast = rank === total;
                       return (
                         <div key={entry.player_id}>
-                          {rank === 1 && (
-                            <div className="text-center py-1.5 bg-yellow-400 text-gray-900 text-[10px] font-bold uppercase tracking-widest border-b border-yellow-300">
-                              Donald J. Trump
-                            </div>
-                          )}
                           {isLast && total > 1 && (
                             <div className="text-center py-1.5 bg-gray-800 text-gray-300 text-[10px] font-bold uppercase tracking-widest border-b border-gray-700">
                               Dono do morro
@@ -408,6 +403,11 @@ export default function LeaderboardPage() {
                               </div>
                             </div>
                           </div>
+                          {rank === 1 && (
+                            <div className="text-center py-1.5 bg-yellow-400 text-gray-900 text-[10px] font-bold uppercase tracking-widest border-t border-yellow-300">
+                              Donald J. Trump
+                            </div>
+                          )}
                         </div>
                       );
                     })
@@ -440,11 +440,6 @@ export default function LeaderboardPage() {
                           const isLast = rank === total;
                           return (
                             <div key={entry.player_id}>
-                              {rank === 1 && (
-                                <div className="text-center py-1 bg-yellow-400 text-gray-900 text-[9px] font-bold uppercase tracking-widest border-b border-yellow-300">
-                                  Donald J. Trump
-                                </div>
-                              )}
                               {isLast && total > 1 && (
                                 <div className="text-center py-1 bg-gray-800 text-gray-300 text-[9px] font-bold uppercase tracking-widest border-b border-gray-700">
                                   Dono do morro
@@ -473,6 +468,11 @@ export default function LeaderboardPage() {
                                   </div>
                                 </div>
                               </div>
+                              {rank === 1 && (
+                                <div className="text-center py-1 bg-yellow-400 text-gray-900 text-[9px] font-bold uppercase tracking-widest border-t border-yellow-300">
+                                  Donald J. Trump
+                                </div>
+                              )}
                             </div>
                           );
                         })
