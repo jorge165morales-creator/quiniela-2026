@@ -405,7 +405,7 @@ export default function LeaderboardPage() {
                           </div>
                           {rank === 1 && (
                             <div className="text-center py-1.5 bg-yellow-400 text-gray-900 text-[10px] font-bold uppercase tracking-widest border-t border-yellow-300">
-                              Donald J. Trump
+                              Mr. President
                             </div>
                           )}
                         </div>
@@ -470,7 +470,7 @@ export default function LeaderboardPage() {
                               </div>
                               {rank === 1 && (
                                 <div className="text-center py-1 bg-yellow-400 text-gray-900 text-[9px] font-bold uppercase tracking-widest border-t border-yellow-300">
-                                  Donald J. Trump
+                                  Mr. President
                                 </div>
                               )}
                             </div>
