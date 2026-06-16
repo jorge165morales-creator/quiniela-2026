@@ -10,7 +10,7 @@ const tabs = [
   { href: "/predictions", label: "Quiniela", icon: "✏️" },
   { href: "/rondas",      label: "Rondas",   icon: "🏅" },
   { href: "/goles",       label: "Goles",    icon: "⚽" },
-  { href: "/ultimo-cero", label: "Último 0", icon: "🏆" },
+  { href: "/ultimo-seis", label: "Último 6", icon: "⭐" },
   { href: "/reglas",      label: "Reglas",   icon: "📋" },
 ];
 
