@@ -159,15 +159,6 @@ export default function UltimoSeisPage() {
         {leagueName && <p className="text-gray-500 text-sm mt-0.5">{leagueName}</p>}
       </div>
 
-      {/* Prize banner */}
-      <div className="bg-fifa-blue rounded-2xl px-5 py-4 mb-6 text-white flex items-center gap-4">
-        <span className="text-3xl">⭐</span>
-        <div>
-          <p className="font-black text-lg leading-tight">Premio: Q150 / $20</p>
-          <p className="text-blue-200 text-sm mt-0.5">El último jugador sin un marcador exacto (6 pts) gana.</p>
-        </div>
-      </div>
-
       {/* Alive players */}
       <section className="mb-6">
         <div className="flex items-center gap-2 mb-3">
